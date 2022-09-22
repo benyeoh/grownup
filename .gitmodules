@@ -1,0 +1,15 @@
+[submodule "boilerplate-removal/boilernet/boilernet"]
+	path = boilerplate-removal/boilernet/boilernet
+	url = https://github.com/mrjleo/boilernet.git
+[submodule "boilerplate-removal/dragnet/dragnet"]
+	path = boilerplate-removal/dragnet/dragnet
+	url = https://github.com/dragnet-org/dragnet.git
+[submodule "boilerplate-removal/cetd/content-extraction"]
+	path = boilerplate-removal/cetd/content-extraction
+	url = https://github.com/benprofessionaledition/content-extraction.git
+[submodule "boilerplate-removal/goose/python-goose"]
+	path = boilerplate-removal/goose/python-goose
+	url = https://github.com/grangier/python-goose.git
+[submodule "boilerplate-removal/web2text/web2text"]
+	path = boilerplate-removal/web2text/web2text
+	url = https://github.com/dalab/web2text.git
