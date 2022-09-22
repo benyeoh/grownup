@@ -1,0 +1,172 @@
+[
+    {
+        "datasets": {
+            "ktf.datasets.process_chain": {
+                "input": {
+                    "ktf.datasets.join": {
+                        "dataset_tuples": [
+                            {
+                                "ktf.datasets.speech.splicing_timit.from_tfrecord": {
+                                    "tfrecord_dir": "/data/timit/tfrecord_cqt/train",
+                                    "validation_split": 0,
+                                    "shuffle_size": 200000,
+                                    "batch_size": 64
+                                }
+                            },
+                            {
+                                "ktf.datasets.speech.splicing_timit.from_tfrecord": {
+                                    "tfrecord_dir": "/data/timit/tfrecord_cqt/valid",
+                                    "validation_split": 0,
+                                    "shuffle_size": 30000,
+                                    "batch_size": 64
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "model": {
+            "ktf.models.OneHeadNet": {
+                "base_model": {
+                    "ktf.models.Sequential": {
+                        "layers": [
+                            {
+                                "ktf.models.networks.seres2net34": {
+                                    "scale": 4,
+                                    "pooling": null
+                                }
+                            },
+                            {
+                                # The reduce_mean() is used to replace the optional global avg layer in seres2net34.
+                                # It converts NHWC -> NTC, so the Dense and Conformer blocks can be cascaded. 
+                                "tf.keras.layers.Lambda": {
+                                    "function": "${lambda x: tf.math.reduce_mean(x, axis=-2)}"
+                                }
+                            },
+                            {
+                                "tf.keras.layers.Dense": {
+                                    "units": 144
+                                }
+                            },
+                            {
+                                "ktf.models.components.ConformerBlock": {
+                                    "dropout": 0.2,
+                                    "fc_factor": 0.5,
+                                    "head_size": 32,
+                                    "num_heads": 32,
+                                    "kernel_size": 16
+                                }
+                            },
+                            {
+                                "ktf.models.components.ConformerBlock": {
+                                    "dropout": 0.2,
+                                    "fc_factor": 0.5,
+                                    "head_size": 32,
+                                    "num_heads": 32,
+                                    "kernel_size": 16
+                                }
+                            },
+                            {
+                                "tf.keras.layers.GlobalAveragePooling1D": {}
+                            }
+                        ]
+                    }
+                },
+                "num_outputs": 2
+            }
+        },
+        "loss": {
+            "tf.keras.losses.SparseCategoricalCrossentropy": {
+                "from_logits": true
+            }
+        },
+        "metrics": {
+            "tf.keras.metrics.SparseCategoricalAccuracy": {}
+        },
+        "optimizer": {
+            "tf.keras.optimizers.Adam": {
+                "learning_rate": 1e-3,
+                "beta_2": 0.98,
+                "epsilon": 1e-09,
+                "amsgrad": true
+            }
+        },
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 200,
+                "save_dir": null,
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "/home/klass/exp/checkpoint/weights.epoch{epoch:02d}-val_loss{val_loss:.2f}.tf",
+                            "save_weights_only": true
+                        }
+                    },
+                    {
+                        "tf.keras.callbacks.EarlyStopping": {
+                            "patience": 10
+                        }
+                    },
+                    {
+                        "tf.keras.callbacks.CSVLogger": {
+                            "filename": "/home/klass/exp/checkpoint/training.log"
+                        }
+                    },
+                    {
+                        "ktf.train.callbacks.Evaluate": {
+                            "dataset": {
+                                "ktf.datasets.speech.splicing_timit.from_tfrecord": {
+                                    "tfrecord_dir": "/data/timit/tfrecord_cqt_clean/test",
+                                    "validation_split": 0,
+                                    "batch_size": 64
+                                }
+                            },
+                            "monitor": "val_loss",
+                            "mode": "auto"
+                        }
+                    },
+                    {
+                        "ktf.train.callbacks.Evaluate": {
+                            "dataset": {
+                                "ktf.datasets.speech.splicing_timit.from_tfrecord": {
+                                    "tfrecord_dir": "/data/timit/tfrecord_cqt_aircon_snr15/test",
+                                    "validation_split": 0,
+                                    "batch_size": 64
+                                }
+                            },
+                            "mode": "auto",
+                            "monitor": "val_loss"
+                        }
+                    },
+                    {
+                        "ktf.train.callbacks.Evaluate": {
+                            "dataset": {
+                                "ktf.datasets.speech.splicing_timit.from_tfrecord": {
+                                    "tfrecord_dir": "/data/timit/tfrecord_cqt_aircon_snr25/test",
+                                    "validation_split": 0,
+                                    "batch_size": 64
+                                }
+                            },
+                            "mode": "auto",
+                            "monitor": "val_loss"
+                        }
+                    },
+                    {
+                        "ktf.train.callbacks.Evaluate": {
+                            "dataset": {
+                                "ktf.datasets.speech.splicing_timit.from_tfrecord": {
+                                    "tfrecord_dir": "/data/timit/tfrecord_cqt_field_snr0-25/test",
+                                    "validation_split": 0,
+                                    "batch_size": 64
+                                }
+                            },
+                            "mode": "auto",
+                            "monitor": "val_loss"
+                        }
+                    }
+                ]
+            }
+        }
+    }
+]

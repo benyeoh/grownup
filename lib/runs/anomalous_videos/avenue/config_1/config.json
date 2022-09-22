@@ -1,0 +1,141 @@
+[
+    {
+        "datasets": {
+            "ktf.datasets.process_chain": {
+                "input": {
+                    "ktf.datasets.join": {
+                        "dataset_tuples": [
+                            {
+                                "ktf.datasets.anomalous_videos.avenue.from_tfrecord_dir": {
+                                    "avenue_tfrecord_dir": "/hpc-datasets/anomalous_videos/avenue/tfrecord/training",
+                                    "validation_split": 0,
+                                    "size": [
+                                        203,
+                                        360
+                                    ],
+                                    "shuffle_size": 14958,
+                                    "batch_size": 18,
+                                    "num_parallel_reads": 8,
+                                    "repeat": true
+                                }
+                            },
+                            {
+                                "ktf.datasets.anomalous_videos.avenue.from_tfrecord_dir": {
+                                    "avenue_tfrecord_dir": "/hpc-datasets/anomalous_videos/avenue/tfrecord/validation",
+                                    "validation_split": 0,
+                                    "size": [
+                                        203,
+                                        360
+                                    ],
+                                    "batch_size": 18,
+                                    "repeat": true
+                                }
+                            }
+                        ]
+                    }
+                },
+                ":": [
+                    {
+                        "ktf.datasets.process.ImgAugmentation": {
+                            "horizontal_flip_prob": 0,
+                            "random_crop_prob": 0,
+                            "central_crop_prob": 0,
+                            "standardize_prob": 1,
+                            "standardize_mean": [
+                                0.5
+                            ],
+                            "standardize_std_dev": [
+                                0.5
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "model": {
+            "ktf.models.networks.MemoryAE": {
+                "encoder": {
+                    "ktf.models.components.Encoder3D": {
+                        "drop_rates": [
+                            0.2,
+                            0.2,
+                            0.2,
+                            0
+                        ],
+                        "name": "encoder3D"
+                    }
+                },
+                "decoder": {
+                    "ktf.models.components.Decoder3D": {
+                        "drop_rates": [
+                            0.2,
+                            0.2,
+                            0.2,
+                            0
+                        ],
+                        "name": "decoder3D"
+                    }
+                },
+                "processor": {
+                    "ktf.models.components.Memory": {
+                        "name": "memory"
+                    }
+                },
+                "return_input": true,
+                "name": "mem_ae_model"
+            }
+        },
+        "loss": [
+            {
+                "ktf.models.losses.ReconstructionL2Loss": {}
+            },
+            {
+                "ktf.models.losses.MemoryEntropyLoss": {}
+            }
+        ],
+        "loss_weights": [
+            1.0,
+            0.0006
+        ],
+        "metrics": [
+            [],
+            []
+        ],
+        "optimizer": {
+            "tfa.optimizers.Lookahead": {
+                "optimizer": {
+                    "tfa.optimizers.RectifiedAdam": {
+                        "learning_rate": 1e-04,
+                        "epsilon": 1e-08
+                    }
+                },
+                "sync_period": 6,
+                "slow_step_size": 0.5
+            }
+        },
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 160,
+                "num_steps": 831,
+                "num_valid_steps": 8,
+                "valid_freq": 1,
+                "save_dir": "/hpc-datasets/ck/ktf/memory_ae/avenue/run2",
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "/hpc-datasets/ck/ktf/memory_ae/avenue/run2/best_val_loss_weight.tf",
+                            "monitor": "val_loss",
+                            "save_best_only": true,
+                            "verbose": 1
+                        }
+                    },
+                    {
+                        "tf.keras.callbacks.CSVLogger": {
+                            "filename": "/hpc-datasets/ck/ktf/memory_ae/avenue/run2/training.csv"
+                        }
+                    }
+                ]
+            }
+        }
+    }
+]

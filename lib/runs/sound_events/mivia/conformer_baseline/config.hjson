@@ -1,0 +1,118 @@
+[
+    {
+        "datasets": {
+            "ktf.datasets.process_chain": {
+                "input": {
+                    "ktf.datasets.join": {
+                        "dataset_tuples": [
+                            {
+                                "ktf.datasets.sound_events.mivia.from_tfrecord": {
+                                    "mivia_tf_record_dir": "/hpc-datasets/sound_events/mivia/tfrecords/train/config1",
+                                    # Refer to /hpc-datasets/sound_events/mivia/tfrecords/configs for more info 
+                                    "validation_split": 0,
+                                    "batch_size": 16,
+                                    "shuffle_size": 512
+                                }
+                            },
+                            {
+                                "ktf.datasets.sound_events.mivia.from_tfrecord": {
+                                    "mivia_tf_record_dir": "/hpc-datasets/sound_events/mivia/tfrecords/test/config1",
+                                    # Refer to /hpc-datasets/sound_events/mivia/tfrecords/configs for more info 
+                                    "validation_split": 0,
+                                    "batch_size": 16,
+                                    "shuffle_size": 512
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "model": {
+            "ktf.models.OneHeadNet": {
+                "base_model": {
+                    "ktf.models.Sequential": {
+                        "layers": [
+                            {
+                                "ktf.models.networks.DepthWiseSeparableDNN": {
+                                    "dropout_rate": [
+                                        0.3,
+                                        0.3,
+                                        0.3
+                                    ]
+                                }
+                            },
+                            {
+                                "tf.keras.layers.Dense": {
+                                    "units": 144
+                                }
+                            },
+                            {
+                                "ktf.models.components.ConformerBlock": {
+                                    "dropout": 0.2,
+                                    "fc_factor": 0.5,
+                                    "head_size": 16,
+                                    "num_heads": 32,
+                                    "kernel_size": 32
+                                }
+                            },
+                            {
+                                "ktf.models.components.ConformerBlock": {
+                                    "dropout": 0.2,
+                                    "fc_factor": 0.5,
+                                    "head_size": 16,
+                                    "num_heads": 32,
+                                    "kernel_size": 32
+                                }
+                            }
+                        ]
+                    }
+                },
+                "num_outputs": 3,
+                "final_activation": {
+                    "tf.keras.layers.Activation": {
+                        "activation": "sigmoid"
+                    }
+                }
+            }
+        },
+        "loss": {
+            "tf.keras.losses.BinaryCrossentropy": {
+                "from_logits": false
+            }
+        },
+        "metrics": {
+            "tf.keras.metrics.Recall": {
+                "top_k": 1
+            }
+        },
+        "optimizer": {
+            "tf.keras.optimizers.Adam": {
+                "learning_rate": 0.001
+            }
+        },
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 100,
+                "save_dir": "/hpc-datasets/junwah/ktf/sound_event/mivia/runs/run_2/",
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "/hpc-datasets/junwah/ktf/sound_event/mivia/runs/run_2/ckpt/best_val.tf",
+                            "monitor": "val_recall",
+                            "save_best_only": true,
+                            "save_weights_only": true,
+                            "mode": "max",
+                            "verbose": 1
+                        }
+                    },
+                    {
+                        "tf.keras.callbacks.CSVLogger": {
+                            "filename": "/hpc-datasets/junwah/ktf/sound_event/mivia/runs/run_2/training.log"
+                        }
+                    }
+                ]
+            }
+        }
+    }
+]

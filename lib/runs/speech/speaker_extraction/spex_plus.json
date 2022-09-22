@@ -1,0 +1,79 @@
+[
+    {
+        "datasets": {
+            "ktf.datasets.process_chain": {
+                "input": {
+                    "ktf.datasets.join": {
+                        "dataset_tuples": [
+                            {
+                                "ktf.datasets.speech.wsj0_spex.from_tfrecord": {
+                                    "tfrecord_dir": "/home/klass/klassterfork/data/wsj0_2mix_extr/tfrecord/tr",
+                                    "validation_split": 0,
+                                    "shuffle_size": 20000,
+                                    "batch_size": 18
+                                }
+                            },
+                            {
+                                "ktf.datasets.speech.wsj0_spex.from_tfrecord": {
+                                    "tfrecord_dir": "/home/klass/klassterfork/data/wsj0_2mix_extr/tfrecord/cv",
+                                    "validation_split": 0,
+                                    "shuffle_size": 5000,
+                                    "batch_size": 18
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "model": {
+            "ktf.models.networks.SpExPlusConvTasnet": {}
+        },
+        "loss": [
+            {
+                "ktf.models.losses.SpExPlusLoss": {}
+            },
+            {
+                "tf.keras.losses.SparseCategoricalCrossentropy": {
+                    "from_logits": true
+                }
+            }
+        ],
+        "loss_weights": [
+            1,
+            10
+        ],
+        "optimizer": {
+            "tfa.optimizers.AdamW": {
+                "learning_rate": 0.001,
+                "weight_decay": 1e-5
+            }
+        },
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 150,
+                "save_dir": null,
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.ReduceLROnPlateau": {
+                            "min_lr": 1e-8,
+                            "patience": 2,
+                            "factor": 0.5
+                        }
+                    },
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "/home/klass/klassterfork/exp/ktf_spex/checkpoint/weights.epoch{epoch:02d}-val_loss{val_loss:.2f}.h5",
+                            "save_weights_only": true
+                        }
+                    },
+                    {
+                        "tf.keras.callbacks.EarlyStopping": {
+                            "patience": 10
+                        }
+                    }
+                ]
+            }
+        }
+    }
+]

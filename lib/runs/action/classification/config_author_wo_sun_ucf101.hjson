@@ -1,0 +1,200 @@
+# Trained on 4 V100 32GB GPUs
+# RAM available was limited to 75% of DGX V100 total RAM
+# CPUs available were limited to 75% of DGX V100 total CPU
+[
+    {
+        "cache": {
+            "datasets_properties": [
+                {
+                    "ktf.models.metrics.get_class_embeddings_and_num_classes": {
+                        "label_file": "/hpc-datasets/action_recognition/kinetics_700_2020/tfrecord/labels.txt",
+                        "dataset_name": "kinetics",
+                        "wv_model": {
+                            "ktf.datasets.actions.classification.auxiliary_word2vec.load_word2vec": {}
+                        }
+                    }
+                },
+                {
+                    "ktf.models.metrics.get_class_embeddings_and_num_classes": {
+                        "label_file": "/hpc-datasets/action_recognition/UCF-101/tfrecord/labels.txt",
+                        "dataset_name": "ucf101",
+                        "wv_model": {
+                            "ktf.datasets.actions.classification.auxiliary_word2vec.load_word2vec": {}
+                        }
+                    }
+                },
+                {
+                    "ktf.models.metrics.get_class_embeddings_and_num_classes": {
+                        "label_file": "/hpc-datasets/action_recognition/hmdb51_sta/tfrecord/labels.txt",
+                        "dataset_name": "hmdb51",
+                        "wv_model": {
+                            "ktf.datasets.actions.classification.auxiliary_word2vec.load_word2vec": {}
+                        }
+                    }
+                }
+            ]
+        },
+        "datasets": {
+            "ktf.datasets.process_chain": {
+                "input": {
+                    "ktf.datasets.join": {
+                        "dataset_tuples": [
+                            {
+                                "ktf.datasets.actions.classification.kinetics.from_tfrecord_list": {
+                                    "kinetics_tfrecord_paths": "/hpc-datasets/action_recognition/kinetics_700_2020/tfrecord/filtered_kinetics_train_tfrecord_paths_hpc.txt",
+                                    "validation_split": 0,
+                                    "batch_size": 88, # 22 per GPU on V100
+                                    "num_clips": 1,
+                                    "tfrecords_time_step": 600,
+                                    "input_time_step": 16,
+                                    "crop_size": 112,
+                                    "word_emb_len": 300,
+                                    "dataset_index": 0, # Kinetics
+                                    "shuffle_size": 4400, # Total number of elements in whole dataset = 503535
+                                    "repeat": false,
+                                    "convert_to_float": true,
+                                    "num_parallel_reads": 176 # Set to 2x batch size
+                                }
+                            },
+                            {
+                                "ktf.datasets.actions.classification.ucf101.from_tfrecord_list": {
+                                    "ucf_101_tfrecord_paths": "/hpc-datasets/action_recognition/UCF-101/tfrecord/ucf_101_tfrecords_paths.txt",
+                                    "validation_split": 1,
+                                    "batch_size": 8, # have to be multiple of number of GPUs # set to 8 here as its 8 x 25 videos for inference. Any more, Keras will choose to infer on CPU which is slow.
+                                    "num_clips": 25,
+                                    "tfrecords_time_step": 1800,
+                                    "input_time_step": 16,
+                                    "crop_size": 112,
+                                    "word_emb_len": 300,
+                                    "dataset_index": 1, # UCF101
+                                    "shuffle_size": null,
+                                    "repeat": true,
+                                    "convert_to_float": true,
+                                    "num_parallel_reads": 16 # Set to 2x batch size
+                                }
+                            }
+                        ]
+                    }
+                },
+                "0": [
+                    {
+                        "ktf.datasets.process.ImgAugmentation": {
+                            "horizontal_flip_prob": 1,
+                            "random_crop_prob": 0,
+                            "central_crop_prob": 0,
+                            "standardize_prob": 0
+                        }
+                    }
+                ],
+                ":": [
+                    {
+                        "ktf.datasets.process.ImgAugmentation": {
+                            "horizontal_flip_prob": 0,
+                            "random_crop_prob": 0,
+                            "central_crop_prob": 0,
+                            "standardize_prob": 1,
+                            "standardize_mean": [
+                                0.43216,
+                                0.394666,
+                                0.37645
+                            ],
+                            "standardize_std_dev": [
+                                0.22803,
+                                0.22145,
+                                0.216989
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "model": {
+            "ktf.models.ReduceOneHeadNet": {
+                "num_outputs": 300,
+                "base_model": {
+                    "ktf.models.networks.r2plus1d_18": {
+                        "pooling": "avg",
+                        "name": "..model",
+                        "data_format": "channels_last"
+                    }
+                },
+                "reduction": "mean",
+                "dropout_rate": 0.05,
+                "norm_ord": "euclidean",
+                "name": "."
+            }
+        },
+        "loss": [
+            {
+                "ktf.models.losses.feature_vector_loss": {
+                    "keras_loss": "${tf.keras.losses.MeanSquaredError}",
+                    "ground_truth_feature_vector_index": 1
+                }
+            }
+        ],
+        "metrics": [
+            {
+                "ktf.models.metrics.FeatureVectorBasedSparseCategoricalAccuracy": {
+                    "datasets_properties": "${self.get_cache('datasets_properties')}",
+                    "ground_truth_label_idx": 0,
+                    "ground_truth_dataset_idx": 2,
+                    "name": "feature_vector_sparse_categorical_accuracy"
+                }
+            },
+            {
+                "ktf.models.metrics.FeatureVectorBasedSparseTopKCategoricalAccuracy": {
+                    "datasets_properties": "${self.get_cache('datasets_properties')}",
+                    "ground_truth_label_idx": 0,
+                    "ground_truth_dataset_idx": 2,
+                    "k": 5,
+                    "name": "feature_vector_sparse_top_k_categorical_accuracy"
+                }
+            }
+        ],
+        "optimizer": {
+            "tf.keras.optimizers.Adam": {
+                "learning_rate": 0.001,
+                "beta_1": 0.9,
+                "beta_2": 0.999,
+                "epsilon": 1e-8
+            }
+        },
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.LearningRateScheduler": {
+                            "verbose": 1,
+                            "schedule": {
+                                "ktf.train.callbacks.MultiStepDecayScheduler": {
+                                    "boundaries": [
+                                        41,
+                                        62
+                                    ],
+                                    "decay_factor": 0.1
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "/hpc-datasets/ck/ktf/multi_clip_video_resnet/weights/run1/epoch_{epoch:03d}_val-acc_{val_zero_shot_sparse_categorical_accuracy:.5f}_weight.tf",
+                            "monitor": "val_feature_vector_sparse_categorical_accuracy",
+                            "save_best_only": true,
+                            "save_weights_only": true,
+                            "mode": "max",
+                            "verbose": 1
+                        }
+                    },
+                    {
+                        "tf.keras.callbacks.CSVLogger": {
+                            "filename": "/hpc-datasets/ck/ktf/multi_clip_video_resnet/logs/run1/train.csv"
+                        }
+                    }
+                ],
+                "num_epochs": 70,
+                "num_valid_steps": 1665 # valid_dataset_size/ batch_size = 13320/8
+            }
+        }
+    }
+]

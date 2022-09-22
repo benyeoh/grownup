@@ -1,0 +1,84 @@
+{
+    "datasets": {
+        "ktf.datasets.join": {
+            "dataset_tuples": [
+                {
+                    "ktf.datasets.web.cleaneval.from_tfrecord": {
+                        "tfrecord_dir": "/hpc-datasets/web/cleaneval/tfrecord/dev_orig_500_40_1027",
+                        "validation_split": 0.0,
+                        "batch_size": 64,
+                        "shuffle_size": 9000,
+                        "repeat": false
+                    }
+                },
+                {
+                    "ktf.datasets.web.cleaneval.from_tfrecord": {
+                        "tfrecord_dir": "/hpc-datasets/web/cleaneval/tfrecord/test_orig_500_40_1027",
+                        "validation_split": 0.0,
+                        "batch_size": 64,
+                        "shuffle_size": null
+                    }
+                }
+            ]
+        }
+    },
+    "model": {
+        "ktf.models.Sequential": {
+            "layers": [
+                {
+                    "ktf.models.networks.ConvGraphNet": {
+                        "layers": [
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1
+                        ],
+                        "num_prelim_blocks": 2,
+                        "hidden_base_feature_size": 64,
+                        "output_feature_size": null,
+                        "max_feature_size": 512,
+                        "expansion_rate": 0.0,
+                        "use_residuals": true,
+                        "aggregator": "gs_sum",
+                        "use_layer_norm": true,
+                        "activation": "tanh",
+                        "dropout": 0.2
+                    }
+                },
+                {
+                    "ktf.models.components.GraphNodeClassifyHead": {
+                        "activation": null,
+                        "num_classes": 1
+                    }
+                }
+            ]
+        }
+    },
+    "loss": {
+        "tf.keras.losses.BinaryCrossentropy": {
+            "from_logits": true
+        }
+    },
+    "metrics": [
+        {
+            "tf.keras.metrics.BinaryAccuracy": {}
+        }
+    ],
+    "optimizer": {
+        "tfa.optimizers.AdamW": {
+            "learning_rate": 0.001,
+            "weight_decay": 0.0
+        }
+    },
+    "train_loop": {
+        "ktf.train.KerasTrainLoop": {
+            "num_epochs": 60,
+            "num_steps": null,
+            "num_valid_steps": null,
+            "valid_freq": 1,
+            "save_dir": null
+        }
+    }
+}

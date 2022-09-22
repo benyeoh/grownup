@@ -1,0 +1,101 @@
+[
+    {
+        "datasets": {        
+            "ktf.datasets.join": {
+                "dataset_tuples": [
+                    {
+                        "ktf.datasets.web.dragnet.from_tfrecord": {
+                            "tfrecord_dir": "/hpc-datasets/web/cleaneval/tfrecord/train_eig_big",
+                            "expand_binary_class": false,
+                            "validation_split": 0.0,
+                            "batch_size": 128,
+                            "shuffle_size": 8000,
+                            "config_path": "/hpc-datasets/web/cleaneval/tfrecord/train_eig_big/config.json"
+                        }
+                    },
+                    {
+                        "ktf.datasets.web.dragnet.from_tfrecord": {
+                            "tfrecord_dir": "/hpc-datasets/web/cleaneval/tfrecord/test_eig_big",
+                            "expand_binary_class": false,
+                            "validation_split": 0.0,
+                            "batch_size": 128,
+                            "shuffle_size": null,
+                            "config_path": "/hpc-datasets/web/cleaneval/tfrecord/test_eig_big/config_no_rand_eig.json"
+                        }
+                    }
+                ]
+            }
+        },
+        "model": {
+            "ktf.models.Sequential": {
+                "name": "base_model",
+                "layers": [
+                    {
+                        "ktf.models.networks.RecurrentCGN": {
+                            "layers": [
+                                2,
+                                2,
+                                2,
+                                2,
+                                2,
+                                2,
+                                2,
+                                2,
+                                2,
+                                2
+                            ],
+                            "num_prelim_blocks": 2,
+                            "hidden_base_feature_size": 128,
+                            "output_feature_size": null,
+                            "use_residuals": true,
+                            "aggregator": "gat_gated",
+                            "normalization": "batch",
+                            "recurrent_cell": "lstm",
+                            "aggregator_activation": "relu",
+                            "recurrent_activation": "tanh",
+                            "dropout": 0.0
+                        }
+                    },
+
+                    {
+                        "ktf.models.components.GraphNodeBinaryClassifyHead": {
+                            "expand_class": false
+                        }
+                    }
+                ]
+            }
+        },
+        "loss": {
+            "tf.keras.losses.BinaryCrossentropy": {
+                "from_logits": false
+            }
+        },
+        "metrics": [
+            {
+                "tf.keras.metrics.BinaryAccuracy": {}
+            },
+            {
+                "tf.keras.metrics.Recall": {}
+            },
+            {
+                "tf.keras.metrics.Precision": {}
+            }
+        ],
+        "optimizer": {
+            "tfa.optimizers.AdamW": {
+                "learning_rate": 0.001,
+                "weight_decay": 0.0
+            }
+        },
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 50,
+                "num_steps": null,
+                "num_valid_steps": null,
+                "pretrained_weights": "/hpc-datasets/ben/ktf/runs/web/dragnet/dragnet_97610.h5",                
+                "valid_freq": 1,
+                "save_dir": null
+            }
+        }
+    }
+]

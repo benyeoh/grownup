@@ -1,0 +1,5 @@
+tensorflow==2.5.0
+tensorflow-addons==0.13.0
+albumentations==0.4.5
+hjson==3.0.2
+pyparsing==2.4.7 # version 3+ is installed by default but pycocotools in requirements_ext need this at < 3 so pin version here

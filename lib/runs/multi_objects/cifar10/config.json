@@ -1,0 +1,281 @@
+[
+    {
+        "datasets": {
+            "ktf.datasets.process_chain": {
+                "input": {
+                    "ktf.datasets.join": {
+                        "dataset_tuples": [
+                            {
+                                "ktf.datasets.multi_objects.cifar10.from_tfrecord": {
+                                    "cifar10_tfrecord_dir": "hpc-datasets/multi_objects/cifar10/tfrecords/train",
+                                    "validation_split": 0,
+                                    "batch_size": 16,
+                                    "convert_to_float":false
+                                }
+                            },
+                            {
+                                "ktf.datasets.multi_objects.cifar10.from_tfrecord": {
+                                    "cifar10_tfrecord_dir": "hpc-datasets/multi_objects/cifar10/tfrecords/test",
+                                    "validation_split": 0,
+                                    "batch_size": 16,
+                                    "convert_to_float":false
+                                }
+                            }
+                        ]
+                    }
+                },
+                "0": [
+                    {
+                        "ktf.datasets.process.Swizzle": {
+                            "ordering": [[0,0],1]
+                        }
+                    },
+                    {
+                        "ktf.datasets.process.Unbatch": {}
+                    },
+                    {
+                        "ktf.datasets.process.Albumentations": {
+                            "is_batched": false,
+                            "is_deterministic": false,
+                            "img_indices": ["${(0,0)}", "${(0,1)}"],
+                            "composition": {
+                                "albumentations.Compose": {
+                                    "transforms": [
+                                        {
+                                            "albumentations.HorizontalFlip": {
+                                                "p": 0.5
+                                            }
+                                        },
+                                        {
+                                            "albumentations.OneOf": {
+                                                "p": 0.25,
+                                                "transforms": [
+                                                    {
+                                                        "albumentations.GaussNoise": {
+                                                            "p": 1.0,
+                                                            "var_limit": "${(20.0, 70.0)}"
+                                                        }
+                                                    },
+                                                    {
+                                                        "albumentations.IAAAdditiveGaussianNoise": {
+                                                            "p": 1.0,
+                                                            "scale": "${(10.0, 30.0)}"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        {
+                                            "albumentations.OneOf": {
+                                                "p": 0.25,
+                                                "transforms": [
+                                                    {
+                                                        "albumentations.MotionBlur": {
+                                                            "p": 0.3
+                                                        }
+                                                    },
+                                                    {
+                                                        "albumentations.Blur": {
+                                                            "p": 0.4,
+                                                            "blur_limit": 9
+                                                        }
+                                                    },
+                                                    {
+                                                        "albumentations.Downscale": {
+                                                            "p": 0.4
+                                                        }
+                                                    },
+                                                    {
+                                                        "albumentations.IAASharpen": {
+                                                            "p": 0.3
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        {
+                                            "albumentations.ShiftScaleRotate": {
+                                                "p": 0.5,
+                                                "rotate_limit": 11,
+                                                "shift_limit": 0.15,
+                                                "scale_limit": 0.1
+                                            }
+                                        },
+                                        {
+                                            "albumentations.OneOf": {
+                                                "p": 0.5,
+                                                "transforms": [
+                                                    {
+                                                        "albumentations.RandomBrightnessContrast": {
+                                                            "p": 1.0,
+                                                            "brightness_limit": 0.25,
+                                                            "contrast_limit": 0.35
+                                                        }
+                                                    },
+                                                    {
+                                                        "albumentations.RandomGamma": {
+                                                            "p": 1.0
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        {
+                                            "albumentations.OneOf": {
+                                                "p": 0.5,
+                                                "transforms": [
+                                                    {
+                                                        "albumentations.RandomBrightnessContrast": {
+                                                            "p": 1.0,
+                                                            "brightness_limit": 0.25,
+                                                            "contrast_limit": 0.35
+                                                        }
+                                                    },
+                                                    {
+                                                        "albumentations.Posterize": {
+                                                            "p": 0.25
+                                                        }
+                                                    },
+                                                    {
+                                                        "albumentations.RGBShift": {
+                                                            "p": 0.3
+                                                        }
+                                                    },
+                                                    {
+                                                        "albumentations.RandomGamma": {
+                                                            "p": 1.0
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        {
+                                            "albumentations.HueSaturationValue": {
+                                                "p": 0.5,
+                                                "hue_shift_limit": 30,
+                                                "sat_shift_limit": 35,
+                                                "val_shift_limit": 20
+                                            }
+                                        }
+                                    ],
+                                    "p": 1.0
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "ktf.datasets.process.ConvertToImgDtype": {
+                            "is_batched": false,
+                            "dtype": "${tf.float32}"
+                        }
+                    },
+                    {
+                        "ktf.datasets.process.Batch": {
+                            "batch_size": 16
+                        }
+                    }
+                ]
+            }
+        },
+        "model": {
+            "ktf.models.networks.SimSiamNet": {
+                "encoder": {   
+                                "ktf.models.Sequential":{
+                                    "layers": [
+                                        {
+                                            "tf.keras.applications.ResNet50": {
+                                                "include_top": false,
+                                                "input_shape": [
+                                                    224,
+                                                    224,
+                                                    3
+                                                ],
+                                                "weights": null,
+                                                "pooling": "avg"
+                                            }
+                                        },
+                                        {
+                                            "tf.keras.layers.Dense":{
+                                                "units": 2048,
+                                                "activation": "relu",
+                                                "use_bias": false
+                                            }
+                                        },
+                                        {
+                                            "tf.keras.layers.BatchNormalization": {}
+                                        },
+                                        {
+                                            "tf.keras.layers.Dense": {
+                                                "units": 2048
+                                            }
+                                        }
+                                    ],
+                                    "name": "encoder"
+                                }
+                            },
+                "predictor": {
+                                "ktf.models.Sequential":{
+                                    "layers":[
+                                        {
+                                            "tf.keras.layers.Dense":
+                                            {
+                                                "units": 512,
+                                                "activation": "relu",
+                                                "use_bias": false
+                                            }
+                                        },
+                                        {
+                                            "tf.keras.layers.BatchNormalization": {}
+                                        },
+                                        {
+                                            "tf.keras.layers.Dense": {
+                                                "units": 2048
+                                            }
+                                        }
+                                    ],
+                                    "name": "predictor"
+                                }
+                            }
+                }
+        },
+        "loss": {
+            "ktf.models.losses.SimSiamLoss": {
+                "dim": 2048
+            }
+        },
+        "optimizer": {
+            "tf.keras.optimizers.SGD": {
+                "learning_rate": 0.01,
+                "momentum": 0.6
+            }
+        },
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 1,
+                "save_dir": "hpc-datasets/yuxin.li/models/ssl/models/ktf",
+                "save_submodels": ["encoder"],
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.LearningRateScheduler": {
+                            "schedule": {
+                                "tf.keras.experimental.CosineDecay": {
+                                    "initial_learning_rate": 0.01,
+                                    "decay_steps": 500
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "./models/best_val_acc_weight.h5",
+                            "monitor": "loss",
+                            "save_best_only": true,
+                            "save_weights_only": true,
+                            "verbose": 1
+                        }
+                    }
+                ]
+            }
+        }
+    }
+]

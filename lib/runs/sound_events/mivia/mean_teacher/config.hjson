@@ -1,0 +1,290 @@
+[
+    {
+        "cache":{
+            "composition": {
+                "albumentations.Compose": {
+                    "transforms" : [
+                        {
+                            # Mimicks frequency masking a la SpecAugment
+                            "albumentations.CoarseDropout":{
+                                "max_holes": 1,
+                                "min_width": 1,
+                                "max_width": 27,
+                                "min_height": 512,
+                                "max_height": 512,
+                                "fill_value": 0.0,
+                                "p":0.5
+                            }
+                        },
+                        {
+                            # Mimicks time masking a la SpecAugment
+                            "albumentations.CoarseDropout":{                                               
+                                "max_holes": 1,
+                                "min_width": 64,
+                                "max_width": 64,
+                                "min_height": 1,
+                                "max_height": 100,
+                                "fill_value": 0.0,
+                                "p":0.5
+                            }
+                        }
+                    ],
+
+                    "p": 1.0
+                }
+            }
+        },
+        "datasets": {
+            "ktf.datasets.process_chain": {
+                "input": {
+                    "ktf.datasets.concatenate": {
+                        "dataset_tuples_list": [
+                            {
+                                # 30% Labelled
+                                "ktf.datasets.sound_events.mivia.from_tfrecord": {
+                                    "mivia_tf_record_dir": "/hpc-datasets/sound_events/mivia/tfrecords_unlabelled/train/config1/labelled",
+                                    "validation_split": 0,
+                                    "batch_size": 32,
+                                    "shuffle_size": 512
+                                }
+                            },
+                            {
+                                # 70% Unlabelled 
+                                "ktf.datasets.sound_events.mivia.from_tfrecord": {
+                                    "mivia_tf_record_dir": "/hpc-datasets/sound_events/mivia/tfrecords_unlabelled/train/config1/unlabelled",
+                                    "validation_split": 0,
+                                    "batch_size": 32,
+                                    "shuffle_size": 512
+                                }
+                            },
+                            {
+                                "ktf.datasets.sound_events.mivia.from_tfrecord": {
+                                    "mivia_tf_record_dir": "/hpc-datasets/sound_events/mivia/tfrecords_unlabelled/test/config1",
+                                    # Refer to /hpc-datasets/sound_events/mivia/tfrecords/configs for more info 
+                                    "validation_split": 1,
+                                    "batch_size": 32,
+                                    "shuffle_size": 512
+                                }
+                            }
+                        ],
+                        "batch_size": 32
+                    }
+                },
+                "0": [
+                    {
+                        "ktf.datasets.process.Swizzle": {
+                            "ordering": [[0,0],1]
+                        }
+                    },
+                    {
+                        "ktf.datasets.process.Unbatch": {}
+                    },
+                    # 2 sets of albumentations pipeline, because setting "img_indices"=[(0,0), (0,1)] applies
+                    # same set of augmentations to swizzled inputs
+                    {                      
+                        "ktf.datasets.process.Albumentations": {
+                            "is_batched": false,
+                            "is_deterministic": true, #set deterministic to True to maintain ordering of data
+                            "img_indices": ["${(0,0)}"],
+                            "composition": "${self.get_cache('composition')}"
+                        }
+                    },
+                    {                      
+                        "ktf.datasets.process.Albumentations": {
+                            "is_batched": false,
+                            "is_deterministic": true, #set deterministic to True to maintain ordering of data
+                            "img_indices": ["${(0,1)}"],
+                            "composition": "${self.get_cache('composition')}"
+                        }
+                    },
+                    {
+                        "ktf.datasets.process.Batch": { 
+                            "batch_size": 32
+                        }
+                    }
+                ],
+                "1": [
+                    {
+                        "ktf.datasets.process.Swizzle": {
+                            "ordering": [[0,0],1]
+                        }
+                    }
+                ]
+            }
+        },
+        "model": {
+            "ktf.models.StudentTeacher": {
+                "student_model": {
+                    "ktf.models.OneHeadNet": {
+                        "base_model": {
+                            "ktf.models.Sequential": {
+                                "layers": [
+                                    {
+                                        "ktf.models.networks.DepthWiseSeparableDNN": {
+                                            "dropout_rate": [
+                                                0.3,
+                                                0.3,
+                                                0.3
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "tf.keras.layers.Dense": {
+                                            "units": 144
+                                        }
+                                    },
+                                    {
+                                        "ktf.models.components.ConformerBlock": {
+                                            "dropout": 0.2,
+                                            "fc_factor": 0.5,
+                                            "head_size": 16,
+                                            "num_heads": 32,
+                                            "kernel_size": 32
+                                        }
+                                    },
+                                    {
+                                        "ktf.models.components.ConformerBlock": {
+                                            "dropout": 0.2,
+                                            "fc_factor": 0.5,
+                                            "head_size": 16,
+                                            "num_heads": 32,
+                                            "kernel_size": 32
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        "num_outputs": 3,
+                        "final_activation": {
+                            "tf.keras.layers.Activation": {
+                                "activation": "sigmoid"
+                            }
+                        },
+                        "name": "student_model"
+                    }
+                },
+                "teacher_model": {
+                    "ktf.models.OneHeadNet": {
+                        "base_model": {
+                            "ktf.models.Sequential": {
+                                "layers": [
+                                    {
+                                        "ktf.models.networks.DepthWiseSeparableDNN": {
+                                            "dropout_rate": [
+                                                0.3,
+                                                0.3,
+                                                0.3
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "tf.keras.layers.Dense": {
+                                            "units": 144
+                                        }
+                                    },
+                                    {
+                                        "ktf.models.components.ConformerBlock": {
+                                            "dropout": 0.2,
+                                            "fc_factor": 0.5,
+                                            "head_size": 16,
+                                            "num_heads": 32,
+                                            "kernel_size": 32
+                                        }
+                                    },
+                                    {
+                                        "ktf.models.components.ConformerBlock": {
+                                            "dropout": 0.2,
+                                            "fc_factor": 0.5,
+                                            "head_size": 16,
+                                            "num_heads": 32,
+                                            "kernel_size": 32
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        "num_outputs": 3,
+                        "final_activation": {
+                            "tf.keras.layers.Activation": {
+                                "activation": "sigmoid"
+                            }
+                        },
+                        "name": "teacher_model"
+                    }
+                }
+            }
+        },
+        "loss": [
+            {
+                "tf.keras.losses.BinaryCrossentropy": {
+                    "from_logits": false,
+                    "reduction": "${tf.keras.losses.Reduction.NONE}"
+                }
+            },
+            {
+                "tf.keras.losses.MeanSquaredError": {
+                    "reduction": "${tf.keras.losses.Reduction.NONE}"
+                }
+            }
+        ],
+        "metrics": [
+            {
+                "tf.keras.metrics.Recall": {
+                    "top_k": 1,
+                    "name": "student_score"
+                }
+            },
+            {
+                "tf.keras.metrics.Recall": {
+                    "top_k": 1,
+                    "name": "teacher_score"
+                }
+            },
+            {
+                "tf.keras.metrics.MeanSquaredError":{}
+            }
+        ],
+        "optimizer": {
+            "tf.keras.optimizers.Adam": {
+                "learning_rate": 0.0001
+            }
+        },
+        "train_loop": {
+            "ktf.train.MeanTeacherTrainLoop": {
+                "decay": 0.99,
+                "batch_size":64,
+                "consistency_rampup_epochs": 200,
+                "mask_fn": "${ktf.datasets.sound_events.mivia.utils.mivia_audio_mask}",
+                "num_epochs": 300,
+                "save_dir": "/hpc-datasets/junwah/ktf/sound_event/mean_teacher/mivia/runs/run_4",
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.CSVLogger": {
+                            "filename": "/hpc-datasets/junwah/ktf/sound_event/mean_teacher/mivia/runs/run_4/training.log"
+                        }
+                    },
+                    {
+                        "ktf.train.callbacks.SubModelCheckpoint": {
+                            "filepath": "/hpc-datasets/junwah/ktf/sound_event/mean_teacher/mivia/runs/run_4/ckpt/student_best.tf",
+                            "submodel_name": "student_model",
+                            "monitor": "student_score",
+                            "save_best_only": true,
+                            "save_weights_only": true,
+                            "mode": "max"
+                        }
+                    },
+                    {
+                        "ktf.train.callbacks.SubModelCheckpoint": {
+                            "filepath": "/hpc-datasets/junwah/ktf/sound_event/mean_teacher/mivia/runs/run_4/ckpt/teacher_best.tf",
+                            "submodel_name": "teacher_model",
+                            "monitor": "teacher_score",
+                            "save_best_only": true,
+                            "save_weights_only": true,
+                            "mode": "max"
+                        }
+                    }
+                ]
+            }
+        }
+    }
+]

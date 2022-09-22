@@ -1,0 +1,37 @@
+[
+    {
+        "datasets": {
+            "ktf.datasets.animals.oxford_iiit_pets.from_tfrecord": {
+                "oxford_iiit_pets_tf_dir": "/hpc-datasets/animals/oxford_iiit_pets/tfrecord/512x512_no_pad/",
+                "batch_size": 8,
+                "one_hot_len": 37
+            }
+        },
+        "model": {
+            "ktf.models.networks.ObjDetAPIModel": {
+                "config_file": "mask_rcnn_inception_resnet_v2_1024x1024_coco17_gpu-8",
+                "config": "${{'faster_rcnn': {'num_classes': 37, 'image_resizer': {'fixed_shape_resizer': {'height': 512, 'width': 512}}}}}"
+            }
+        },
+        "optimizer": {
+            "tf.keras.optimizers.SGD": {
+                "learning_rate": 0.008,
+                "momentum": 0.9
+            }
+        },
+        "train_loop": {
+            "ktf.train.ObjDetAPITrainLoop": {
+                "num_epochs": 100,
+                "pretrained_weights": [
+                    [
+                        "faster_rcnn_meta_arch",
+                        "/hpc-datasets/tf_object_detection_api/mask_rcnn_inception_resnet_v2_1024x1024_coco17_gpu-8/checkpoint/ckpt-0"
+                    ]
+                ],
+                "gradient_clipping": 10.0,
+                "obj_det_weights_load_type": "detection",
+                "save_dir": "/hpc-datasets/evan/train_weights/image_segmentation"
+            }
+        }
+    }
+]

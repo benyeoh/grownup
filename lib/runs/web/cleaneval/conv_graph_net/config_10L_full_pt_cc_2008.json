@@ -1,0 +1,148 @@
+[
+    {
+        "datasets": {        
+            "ktf.datasets.web.cleaneval.from_tfrecord": {
+                "tfrecord_dir": "/hpc-datasets/web/cleaneval/tfrecord/train_1703_w_pkl",
+                "expand_binary_class": false,
+                "validation_split": 0.1,
+                "batch_size": 128,
+                "shuffle_size": 4000,
+                "config_path": "/hpc-datasets/web/cleaneval/tfrecord/train_1703_w_pkl/config.json",
+            }
+        },
+        "model": {
+            "ktf.models.Sequential": {
+                "name": "base_model",
+                "layers": [
+                     {
+                        "ktf.models.networks.RecurrentCGN": {
+                            "name": "gcn",
+                            "layers": [
+                                2,
+                                2,
+                                2,
+                                2,
+                                2,
+                                2,
+                                2,
+                                2,
+                                2,
+                                2
+                            ],
+                            "debug_self_loops": null,
+                            "num_prelim_blocks": [768, 256],
+                            "hidden_base_feature_size": 256,
+                            "output_feature_size": 512,
+                            "use_residuals": true,
+                            "aggregator": "gat_gated",
+                            "normalization": "layer",
+                            "recurrent_cell": "lstm",
+                            "aggregator_activation": "relu",
+                            "recurrent_activation": "tanh",
+                            "dropout": 0.3
+                        }
+                    },
+
+                    {
+                        "ktf.models.components.GraphNodeBinaryClassifyHead": {
+                            "expand_class": false
+                        }
+                    }
+
+                ]
+            }
+        },
+        "loss": {
+            "ktf.models.losses.BinaryCrossentropyW": {
+                "from_logits": false,
+                "label_smoothing": 0.01,
+                "class_weights": [1.5, 1.0]
+            }
+        },
+        "metrics": [
+            {
+                "tf.keras.metrics.BinaryAccuracy": {}
+            },
+            {
+                "ktf.models.metrics.F1Score": {}
+            },
+            {
+                "tf.keras.metrics.Recall": {}
+            },
+            {
+                "tf.keras.metrics.Precision": {}
+            }
+
+        ],
+        "optimizer": {
+            "ktf.train.optimizers.diff_lr_wrap": {
+                "optimizer_class": "${tfa.optimizers.AdamW}",
+                "learning_rate": 0.002,
+                "weight_decay": 0.0001,
+                "debug_info": false,
+                "lr_list": [
+                    ["base_model/gcn/lstm_cell/.*", 0.5],
+                    ["base_model/gcn/prelim_block0/.*", 0.15],
+                    ["base_model/gcn/prelim_block1/.*", 0.2],
+                    ["base_model/gcn/layer0_block.*", 0.3],
+                    ["base_model/gcn/layer1_block.*", 0.4],
+                    ["base_model/gcn/layer2_block.*", 0.5],
+                    ["base_model/gcn/layer3_block.*", 0.55],
+                    ["base_model/gcn/layer4_block.*", 0.6],
+                    ["base_model/gcn/layer5_block.*", 0.65],
+                    ["base_model/gcn/layer6_block.*", 0.7],
+                    ["base_model/gcn/layer7_block.*", 0.75],
+                    ["base_model/gcn/layer8_block.*", 0.8],
+                    ["base_model/gcn/layer9_block.*", 0.85],
+                    ["base_model/.*", 1.0]
+                ]
+            }
+        },
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 40,
+                "num_steps": null,
+                "valid_freq": "${list(range(8, 40, 1))}",
+                "pretrained_weights": [
+                    [
+                        "gcn",
+                        "/hpc-datasets/ktf/weights/custom/gcn/commoncrawl/2008_2009/10l_256h_all.h5"
+                    ]
+                    
+                ],
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "/temp-data/cleaneval_10xl_val.h5",
+                            "monitor": "val_f1_score",
+                            "save_best_only": true,
+                            "save_weights_only": true,
+                            "mode": "max",
+                            "verbose": 1
+                        }
+                    },
+                    
+                    {
+                        "ktf.train.callbacks.Evaluate": {
+                            "dataset": {
+                                "ktf.datasets.web.cleaneval.from_tfrecord": {
+                                    "tfrecord_dir": "/hpc-datasets/web/cleaneval/tfrecord/test_1703",
+                                    "expand_binary_class": false,
+                                    "validation_split": 0.0,
+                                    "batch_size": 128,
+                                    "shuffle_size": null,
+                                    "config_path": "/hpc-datasets/web/cleaneval/tfrecord/test_1703/config_no_rand_eig.json"
+                                }
+                            },
+                            "monitor": "val_f1_score",
+                            "mode": "max"
+                        }
+                    }
+                ],
+                "save_dir": null
+                
+                
+            }
+        }
+    }
+]

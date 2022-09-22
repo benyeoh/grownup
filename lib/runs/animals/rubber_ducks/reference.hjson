@@ -1,0 +1,59 @@
+[
+    {
+        "datasets": {
+            "ktf.datasets.animals.rubber_ducks.from_tfrecord": {
+                "rubber_ducks_tfrecord_dir": "/hpc-datasets/animals/rubber_ducks/tfrecords/train",
+                "batch_size": 4,
+                "shuffle_size": 5,
+                "repeat": true
+            }
+        },
+        "model": {
+            "ktf.models.networks.ObjDetAPIModel": {
+                # Parameters passed in `config` override the contents in the `config_file`
+                "config_file": "ssd_resnet50_v1_fpn_640x640_coco17_tpu-8",
+                "config": "${{'ssd': {'num_classes': 1, 'freeze_batchnorm': True}}}"
+            }
+        },
+        "optimizer": {
+            "tf.keras.optimizers.SGD": {
+                # We use the same parameters as those in the Obj Det API tutorial
+                "learning_rate": 0.01,
+                "momentum": 0.9
+            }
+        },
+        "train_loop": {
+            "ktf.train.ObjDetAPITrainLoop": {
+                "num_epochs": 10,
+                "num_steps": 10,
+                # We load a checkpoint pretrained on the MSCOCO dataset that excludes the classification head as we
+                # are predicting a different number of classes
+                "pretrained_weights": [
+                    [
+                        "ssd_meta_arch",
+                        "/hpc-datasets/tf_object_detection_api/ssd_resnet50_v1_fpn_640x640_coco17_tpu-8/checkpoint_single_class/ckpt-28"
+                    ]
+                ],
+                # We freeze all weights except those in the top layers
+                "freeze_weights": [
+                    "conv.*",
+                    "obj_det_api_model/ssd_meta_arch/ResNet50V1_FPN.*",
+                    "obj_det_api_model/ssd_meta_arch/WeightSharedConvolutionalBoxPredictor/BoxPredictionTower.*",
+                    "obj_det_api_model/ssd_meta_arch/WeightSharedConvolutionalBoxPredictor/ClassPredictionTower.*"
+                ],
+                # An SSD checkpoint has three parts:
+                # 1. Classification Network (like ResNet)
+                # 2. DeConv layers (for FPN)
+                # 3. Box/Class prediction parameters
+                # Parameters from a checkpoint file will be loaded using the following strategy:
+                # * `classification` - will load #1
+                # * `detection` - will load #1, #2
+                # * `full` - will load #1, #2, #3
+                # However, we load the full checkpoint in this case as we have already modified it to exclude specific
+                # parameters
+                "obj_det_weights_load_type": "full",
+                "save_dir": null
+            }
+        }
+    }
+]

@@ -1,0 +1,77 @@
+[
+    {
+        "datasets": {
+            "ktf.datasets.process_chain": {
+                "input": {
+                    "ktf.datasets.join": {
+                        "dataset_tuples": [
+                            {
+                                "ktf.datasets.speech.asvspoof2019.from_tfrecord": {
+                                    "tfrecord_dir": "/data/asvspoof2019/tfrecord/train",
+                                    "validation_split": 0,
+                                    "shuffle_size": 30000,
+                                    "batch_size": 32
+                                }
+                            },
+                            {
+                                "ktf.datasets.speech.asvspoof2019.from_tfrecord": {
+                                    "tfrecord_dir": "/data/asvspoof2019/tfrecord/dev",
+                                    "validation_split": 0,
+                                    "shuffle_size": 30000,
+                                    "batch_size": 64
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "model": {
+            "ktf.models.OneHeadNet": {
+                "base_model": "seresnet34",
+                "num_outputs": 2,
+                "regularizer": {
+                    "tf.keras.regularizers.L1L2": {
+                        "l1": 0.0,
+                        "l2": 0.0005
+                    }
+                }
+            }
+        },
+        "loss": {
+            "tf.keras.losses.SparseCategoricalCrossentropy": {
+                "from_logits": true
+            }
+        },
+        "metrics": {
+            "tf.keras.metrics.SparseCategoricalAccuracy": {}
+        },
+        "optimizer": {
+            "tf.keras.optimizers.Adam": {
+                "learning_rate": 3e-4,
+                "beta_2": 0.98,
+                "epsilon": 1e-09,
+                "amsgrad": true
+            }
+        },
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 150,
+                "save_dir": null,
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "/home/klass/exp/checkpoint/weights.epoch{epoch:02d}-val_loss{val_loss:.2f}.h5",
+                            "save_weights_only": true
+                        }
+                    },
+                    {
+                        "tf.keras.callbacks.EarlyStopping": {
+                            "patience": 20
+                        }
+                    }
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,113 @@
+[
+    {
+        "datasets": {
+            "ktf.datasets.process_chain": {
+                "input": {
+                    "ktf.datasets.persons.combined_reid.from_tfrecord": {
+                        "combined_reid_tfrecord_dir": "/hpc-datasets/persons/combined_reid/tfrecord/multi_source_384x128",
+                        "shuffle_size": 10000,
+                        "validation_split": 0.2,
+                        "batch_size": 1
+                    }
+                },
+                "0": [
+                    {
+                        "ktf.datasets.process.ImgPad": {
+                            "paddings": 10,
+                            "pad_value": 0
+                        }
+                    },
+                    {
+                        "ktf.datasets.process.ImgAugmentation": {
+                            "horizontal_flip_prob": 1,
+                            "random_crop_prob": 1,
+                            "random_crop_size": [384, 128, 3],
+                            "standardize_prob": 1,
+                            "standardize_mean": [0.485, 0.456, 0.406],
+                            "standardize_std_dev": [0.229,0.224,0.225]
+                        }
+                    }
+                ],
+                "1": [
+                    {
+                        "ktf.datasets.process.ImgAugmentation": {
+                            "horizontal_flip_prob": 0,
+                            "random_crop_prob": 0,
+                            "standardize_prob": 1,
+                            "standardize_mean": [0.485, 0.456, 0.406],
+                            "standardize_std_dev": [0.229,0.224,0.225]
+                        }
+                    }
+                ],
+                ":": [
+                    {
+                        "ktf.datasets.process.OneHot": {
+                            "num_classes": 18530
+                        }
+                    }
+                ]
+            }
+        },
+        "model": {
+            "ktf.models.OneHeadNet": {
+                "base_model": {
+                    "ktf.models.networks.dualnorm_resnet50": {
+                        "feature_size": 2048
+                    }
+                },
+                "num_outputs": 18530
+            }
+        },
+        "loss": {
+            "tf.keras.losses.CategoricalCrossentropy": {
+                "from_logits": true,
+                "label_smoothing": 0.1
+            }
+        },
+        "metrics": [ {
+                "tf.keras.metrics.CategoricalAccuracy": {}
+            }
+        ],
+        "optimizer": {
+            "tfa.optimizers.SGDW": {
+                "weight_decay": 0.0001,
+                "learning_rate": 0.05,
+                "momentum": 0.9,
+                "nesterov": true
+            }
+        },
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 160,
+                "save_dir": "/hpc-datasets-output/",
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.LearningRateScheduler": {
+                            "schedule": {
+                                "ktf.train.callbacks.StepDecayScheduler": {
+                                    "decay": 0.8,
+                                    "decay_steps": 20
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "ktf.train.callbacks.SubModelCheckpoint": {
+                            "filepath": "/hpc-datasets-output/best_val_acc_submodel_weight.tf",
+                            "submodel_name": "dual_norm",
+                            "monitor": "val_categorical_accuracy",
+                            "save_best_only": true,
+                            "save_weights_only": true,
+                            "mode": "max"
+                        }
+                    },
+                    {
+                        "tf.keras.callbacks.CSVLogger": {
+                            "filename": "/hpc-datasets-output/log.csv"
+                        }
+                    }
+                ]
+            }
+        }
+    }
+]

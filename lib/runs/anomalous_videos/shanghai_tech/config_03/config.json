@@ -1,0 +1,142 @@
+[
+    {
+        "datasets": {
+            "ktf.datasets.process_chain": {
+                "input": {
+                    "ktf.datasets.join": {
+                        "dataset_tuples": [
+                            {
+                                "ktf.datasets.anomalous_videos.shanghai_tech.from_tfrecord_dir": {
+                                    "shanghai_tech_tfrecord_dir": "/hpc-datasets/anomalous_videos/shanghai_tech/tfrecord/training_3",
+                                    "validation_split": 0,
+                                    "size": [
+                                        220,
+                                        392
+                                    ],
+                                    "shuffle_size": 1960,
+                                    "batch_size": 18,
+                                    "num_parallel_reads": 80,
+                                    "repeat": true
+                                }
+                            },
+                            {
+                                "ktf.datasets.anomalous_videos.shanghai_tech.from_tfrecord_dir": {
+                                    "shanghai_tech_tfrecord_dir": "/hpc-datasets/anomalous_videos/shanghai_tech/tfrecord/validation_3",
+                                    "validation_split": 0,
+                                    "size": [
+                                        220,
+                                        392
+                                    ],
+                                    "batch_size": 18,
+                                    "num_parallel_reads": 80,
+                                    "repeat": true
+                                }
+                            }
+                        ]
+                    }
+                },
+                ":": [
+                    {
+                        "ktf.datasets.process.ImgAugmentation": {
+                            "horizontal_flip_prob": 0,
+                            "random_crop_prob": 0,
+                            "central_crop_prob": 0,
+                            "standardize_prob": 1,
+                            "standardize_mean": [
+                                0.5
+                            ],
+                            "standardize_std_dev": [
+                                0.5
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "model": {
+            "ktf.models.networks.MemoryAE": {
+                "encoder": {
+                    "ktf.models.components.Encoder3D": {
+                        "drop_rates": [
+                            0.0,
+                            0.0,
+                            0.0,
+                            0
+                        ],
+                        "name": "encoder3D"
+                    }
+                },
+                "decoder": {
+                    "ktf.models.components.Decoder3D": {
+                        "drop_rates": [
+                            0.0,
+                            0.0,
+                            0.0,
+                            0
+                        ],
+                        "name": "decoder3D"
+                    }
+                },
+                "processor": {
+                    "ktf.models.components.Memory": {
+                        "name": "memory"
+                    }
+                },
+                "return_input": true,
+                "name": "mem_ae_model"
+            }
+        },
+        "loss": [
+            {
+                "ktf.models.losses.ReconstructionL2Loss": {}
+            },
+            {
+                "ktf.models.losses.MemoryEntropyLoss": {}
+            }
+        ],
+        "loss_weights": [
+            1.0,
+            0.0002
+        ],
+        "metrics": [
+            [],
+            []
+        ],
+        "optimizer": {
+            "tfa.optimizers.Lookahead": {
+                "optimizer": {
+                    "tfa.optimizers.RectifiedAdam": {
+                        "learning_rate": 1e-04,
+                        "epsilon": 1e-08
+                    }
+                },
+                "sync_period": 6,
+                "slow_step_size": 0.5
+            }
+        },
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 160,
+                "num_steps": 109,
+                "num_valid_steps": 15,
+                "valid_freq": 1,
+                "save_dir": "/hpc-datasets/ck/ktf/memory_ae/shanghai_tech/03/run2",
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "/hpc-datasets/ck/ktf/memory_ae/shanghai_tech/03/run2/epoch_{epoch:03d}_val-loss_{val_loss:.5f}_weight.tf",
+                            "monitor": "val_loss",
+                            "save_best_only": true,
+                            "verbose": 1
+                        }
+                    },
+                    {
+                        "tf.keras.callbacks.CSVLogger": {
+                            "filename": "/hpc-datasets/ck/ktf/memory_ae/shanghai_tech/03/run2/training.csv"
+                        }
+                    }
+                ]
+            }
+        }
+    }
+]

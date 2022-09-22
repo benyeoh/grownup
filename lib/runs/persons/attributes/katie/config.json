@@ -1,0 +1,145 @@
+[
+    {
+        "datasets": {
+            "ktf.datasets.process_chain": {
+                "input": {
+                    "ktf.datasets.concatenate": {
+                        "dataset_tuples_list": [
+                            {
+                                "ktf.datasets.persons.katie.from_tfrecord": {
+                                    "batch_size": 128,
+                                    "convert_to_float": false,
+                                    "katie_tfrecord_dir": "/hpc-datasets/person_retrieval/dataset/katie/trainval/tfrecord/philistreet_20201120_16_combined",
+                                    "repeat": true,
+                                    "shuffle_size": 5000,
+                                    "attr_length": 7,
+                                    "validation_split": 0.2
+                                }
+                            },
+                            {
+                                "ktf.datasets.persons.katie.from_tfrecord": {
+                                    "batch_size": 128,
+                                    "convert_to_float": false,
+                                    "katie_tfrecord_dir": "/hpc-datasets/person_retrieval/dataset/katie/trainval/tfrecord/michaelweissstreet_20201019_1200_combined",
+                                    "repeat": true,
+                                    "shuffle_size": 5000,
+                                    "attr_length": 7,
+                                    "validation_split": 0.2
+                                }
+                            }
+                        ]
+                    }
+                },
+                "0": [
+                    {
+                        "ktf.datasets.process.ImgAugmentation": {
+                            "central_crop_prob": 0,
+                            "horizontal_flip_prob": 1,
+                            "random_crop_prob": 0,
+                            "standardize_prob": 0
+                        }
+                    }
+                ],
+                ":": [
+                    {
+                        "ktf.datasets.process.MapInput": {
+                            "dtype": "${tf.float32}",
+                            "map_fn": "tf.cast"
+                        }
+                    },
+                    {
+                        "ktf.datasets.process.MapInput": {
+                            "map_fn": "tf.keras.applications.resnet_v2.preprocess_input"
+                        }
+                    }
+                ]
+            }
+        },
+        "model": {
+            "ktf.models.OneHeadNet": {
+                "base_model": {
+                    "tf.keras.applications.resnet_v2.ResNet50V2": {
+                        "include_top": false,
+                        "pooling": "avg",
+                        "weights": null,
+                        "input_shape": [
+                            224,
+                            224,
+                            3
+                        ]
+                    }
+                },
+                "dropout": 0.5,
+                "initializer": {
+                    " tf.keras.initializers.RandomNormal": {
+                        "stddev": 0.001
+                    }
+                },
+                "num_outputs": 7
+            }
+        },
+        "loss": {
+            "ktf.models.losses.MultiClassBinaryCrossentropyBW": {
+                "class_weights": [
+                    0.31252866983413696,
+                    0.3368517756462097,
+                    0.003671408863738179,
+                    0.11702615767717361,
+                    0.26250573992729187,
+                    0.14318494498729706,
+                    0.013767783530056477
+                ],
+                "from_logits": true
+            }
+        },
+        "metrics": "${[ktf.models.metrics.MultiClassMeanAccuracy(num_classes=7) if x<0 else ktf.models.metrics.MultiClassSingleMeanAccuracy(x) for x in range(-1, 7)]}",
+        "optimizer": {
+            "tfa.optimizers.SGDW": {
+                "learning_rate": 0.001,
+                "momentum": 0.9,
+                "weight_decay": 0.0001
+            }
+        },
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.CSVLogger": {
+                            "filename": "/hpc-datasets/person_retrieval/weights/ktf/katie/deepmar.csv"
+                        }
+                    },
+                    {
+                        "tf.keras.callbacks.LearningRateScheduler": {
+                            "schedule": {
+                                "ktf.train.callbacks.StepDecayScheduler": {
+                                    "decay": 0.1,
+                                    "decay_steps": 50
+                                }
+                            },
+                            "verbose": 1
+                        }
+                    },
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "/hpc-datasets/person_retrieval/weights/ktf/katie/deepmar_best_weights.tf",
+                            "mode": "max",
+                            "monitor": "val_mA",
+                            "save_best_only": true,
+                            "verbose": 1
+                        }
+                    }
+                ],
+                "num_epochs": 150,
+                "num_steps": 69,
+                "num_valid_steps": 18,
+                "pretrained_weights": [
+                    [
+                        "resnet50v2",
+                        "/hpc-datasets/ktf/weights/keras_apps/resnet50v2/resnet50v2_weights_tf_dim_ordering_tf_kernels_notop.h5"
+                    ]
+                ],
+                "save_dir": "/tmp/ktf/deepmar_katie_author_config_wd_1e-4"
+            }
+        }
+    }
+]
