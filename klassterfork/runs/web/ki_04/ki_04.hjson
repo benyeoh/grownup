@@ -1,0 +1,906 @@
+[
+    { 
+        "datasets": {        
+
+
+            "ktf.datasets.web.web7.from_tfrecord_graph": {
+                "tfrecord_dir": ["${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split1', '**')}", // "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split1', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split2', '**')}", //"${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split2', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split3', '**')}", //"${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split3', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split4', '**')}",//"${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split4', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split5', '**')}",//"${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split5', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split6', '**')}",//"${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split6', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split7', '**')}",//"${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split7', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split8', '**')}",//"${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split8', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split9', '**')}"],//"${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split9', '**')}"],
+                "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config.json')}",
+                "batch_size": 32,
+                "validation_split": 0.0,
+                "shuffle_size": 1200,
+                "repeat": false
+            }
+        },
+        
+        "model": {
+	        "ktf.models.Sequential": {
+	            "name": "base_model",
+	            "layers": [
+	                {
+	                    "ktf.models.Sequential": {
+                            "name": "gcn_trans",
+                            "layers": [
+                                {
+                                    "ktf.models.networks.RecurrentCGN": {
+                                        "name": "gcn_trans",
+                                        "layers": [
+                                            2,
+                                            2,
+                                            2,
+                                            2,
+                                            2,
+                                        ],
+                                        "debug_self_loops": null,
+                                        "num_prelim_blocks": [768, 256],
+                                        "hidden_base_feature_size": 256,
+                                        "output_feature_size": null,
+                                        "use_residuals": true,
+                                        "aggregator": "gat_gated",
+                                        "normalization": "layer",
+                                        "recurrent_cell": "lstm",
+                                        "aggregator_activation": "relu",
+                                        "recurrent_activation": "tanh",
+                                        "dropout": 0.2,
+                                    }
+                                },
+                                {
+                                    "ktf.models.networks.TransGraphNet": {
+                                        "name": "transgraph",
+                                        "num_layers": 5,
+                                        "embedding_size": 256,
+                                        "num_heads": 4,
+                                        "dropout": 0.0,
+                                    }
+                                }
+                            ]
+                        }
+	                },
+                    {
+                        "ktf.models.components.Swizzle": {
+                            "ordering": -1
+                        }
+	                },
+                    {
+                        "ktf.models.components.DenseL2Norm": {
+                            "units": 8,
+                            "use_bias": false
+                        }
+                    }
+	            ]
+	        }
+        },
+       
+        "loss": [
+            {
+
+                "ktf.models.losses.LinearArcLoss": {
+                    "scale": 5.0,
+                    "arcloss_margin": 0.3
+                }
+            }
+        ],
+        
+        "metrics": [
+            [
+                {
+                    "tf.keras.metrics.SparseCategoricalAccuracy": {}
+                }
+            ]     
+        ],
+     
+        "optimizer": {
+            "tfa.optimizers.AdamW": {
+                "learning_rate": 0.002,
+                "weight_decay": 0.0000,
+            }
+        },
+
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 49,
+                "num_steps": null,
+                "num_valid_steps": null,
+                "pretrained_weights": [
+                    [
+                        "gcn_trans",
+                        "runs/web/commoncrawl/pretrain_2008.h5"
+                    ]
+                ],
+                
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.LearningRateScheduler": {
+                            "schedule": {
+                                "tf.keras.experimental.CosineDecayRestarts": {
+                                    "initial_learning_rate": 0.002,
+                                    "first_decay_steps": 7,
+                                    "t_mul": 2,
+                                    "alpha": 0.05
+                                }
+                            },
+                            
+                            "verbose": true
+                        }
+                        
+                    },
+
+                    {
+                        "ktf.train.callbacks.Evaluate": {
+                            "dataset": {
+                                "ktf.datasets.web.web7.from_tfrecord_graph": {
+                                    "tfrecord_dir": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split0', '**')}",
+                                    "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config_no_rand_eig.json')}",
+                                    "batch_size": 32,
+                                    "validation_split": 0.0,
+                                    "shuffle_size": null,
+                                    "repeat": false
+                                }   
+                            },
+                            "monitor": "${list(range(15, 100))}",
+                            "mode": "max"
+                        }
+                    },
+                    
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "${os.environ.get('KTF_SAVED_WEIGHTS_DIR', '/tmp/ki_04_0.h5')}",
+                            "save_best_only": false,
+                            "save_weights_only": true,
+                            "verbose": 1
+                        }
+                    }
+                ],
+                
+                "save_dir": null
+            }
+        }
+    },
+    
+    // 1
+    {
+        "datasets": {        
+            "ktf.datasets.web.web7.from_tfrecord_graph": {
+                "tfrecord_dir": ["${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split0', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split2', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split3', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split4', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split5', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split6', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split7', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split8', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split9', '**')}"],
+                "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config.json')}",
+                "batch_size": 32,
+                "validation_split": 0.0,
+                "shuffle_size": 1200,
+                "repeat": false
+            }
+        },
+        
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 49,
+                "num_steps": null,
+                "num_valid_steps": null,
+                "pretrained_weights": [
+                    [
+                        "gcn_trans",
+                        "runs/web/commoncrawl/pretrain_2008.h5"
+                    ]
+                ],
+                
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.LearningRateScheduler": {
+                            "schedule": {
+                                "tf.keras.experimental.CosineDecayRestarts": {
+                                    "initial_learning_rate": 0.002,
+                                    "first_decay_steps": 7,
+                                    "t_mul": 2,
+                                    "alpha": 0.05
+                                }
+                            },
+                            
+                            "verbose": true
+                        }
+                        
+                    },
+
+                    {
+                        "ktf.train.callbacks.Evaluate": {
+                            "dataset": {
+                                "ktf.datasets.web.web7.from_tfrecord_graph": {
+                                    "tfrecord_dir": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split1', '**')}",
+                                    "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config_no_rand_eig.json')}",
+                                    "batch_size": 32,
+                                    "validation_split": 0.0,
+                                    "shuffle_size": null,
+                                    "repeat": false
+                                }   
+                            },
+                            "monitor": "${list(range(15, 100))}",
+                            "mode": "max"
+                        }
+                    },
+                    
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "${os.environ.get('KTF_SAVED_WEIGHTS_DIR', '/tmp/ki_04_1.h5')}",
+                            "save_best_only": false,
+                            "save_weights_only": true,
+                            "verbose": 1
+                        }
+                    }
+                ],
+                
+                "save_dir": null
+            }
+        }
+    },
+    
+    // 2
+    {
+        "datasets": {        
+            "ktf.datasets.web.web7.from_tfrecord_graph": {
+                "tfrecord_dir": ["${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split0', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split1', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split3', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split4', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split5', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split6', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split7', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split8', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split9', '**')}"],
+                "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config.json')}",
+                "batch_size": 32,
+                "validation_split": 0.0,
+                "shuffle_size": 1200,
+                "repeat": false
+            }
+        },
+        
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 49,
+                "num_steps": null,
+                "num_valid_steps": null,
+                "pretrained_weights": [
+                    [
+                        "gcn_trans",
+                        "runs/web/commoncrawl/pretrain_2008.h5"
+                    ]
+                ],
+                
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.LearningRateScheduler": {
+                            "schedule": {
+                                "tf.keras.experimental.CosineDecayRestarts": {
+                                    "initial_learning_rate": 0.002,
+                                    "first_decay_steps": 7,
+                                    "t_mul": 2,
+                                    "alpha": 0.05
+                                }
+                            },
+                            
+                            "verbose": true
+                        }
+                        
+                    },
+
+                    {
+                        "ktf.train.callbacks.Evaluate": {
+                            "dataset": {
+                                "ktf.datasets.web.web7.from_tfrecord_graph": {
+                                    "tfrecord_dir": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split2', '**')}",
+                                    "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config_no_rand_eig.json')}",
+                                    "batch_size": 32,
+                                    "validation_split": 0.0,
+                                    "shuffle_size": null,
+                                    "repeat": false
+                                }   
+                            },
+                            "monitor": "${list(range(15, 100))}",
+                            "mode": "max"
+                        }
+                    },
+                    
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "${os.environ.get('KTF_SAVED_WEIGHTS_DIR', '/tmp/ki_04_2.h5')}",
+                            "save_best_only": false,
+                            "save_weights_only": true,
+                            "verbose": 1
+                        }
+                    }
+                ],
+                
+                "save_dir": null
+            }
+        }
+    },
+    
+    // 3
+    {
+        "datasets": {        
+            "ktf.datasets.web.web7.from_tfrecord_graph": {
+                "tfrecord_dir": ["${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split0', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split1', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split2', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split4', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split5', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split6', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split7', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split8', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split9', '**')}"],
+                "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config.json')}",
+                "batch_size": 32,
+                "validation_split": 0.0,
+                "shuffle_size": 1200,
+                "repeat": false
+            }
+        },
+        
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 49,
+                "num_steps": null,
+                "num_valid_steps": null,
+                "pretrained_weights": [
+                    [
+                        "gcn_trans",
+                        "runs/web/commoncrawl/pretrain_2008.h5"
+                    ]
+                ],
+                
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.LearningRateScheduler": {
+                            "schedule": {
+                                "tf.keras.experimental.CosineDecayRestarts": {
+                                    "initial_learning_rate": 0.002,
+                                    "first_decay_steps": 7,
+                                    "t_mul": 2,
+                                    "alpha": 0.05
+                                }
+                            },
+                            
+                            "verbose": true
+                        }
+                        
+                    },
+
+                    {
+                        "ktf.train.callbacks.Evaluate": {
+                            "dataset": {
+                                "ktf.datasets.web.web7.from_tfrecord_graph": {
+                                    "tfrecord_dir": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split3', '**')}",
+                                    "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config_no_rand_eig.json')}",
+                                    "batch_size": 32,
+                                    "validation_split": 0.0,
+                                    "shuffle_size": null,
+                                    "repeat": false
+                                }   
+                            },
+                            "monitor": "${list(range(15, 100))}",
+                            "mode": "max"
+                        }
+                    },
+                    
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "${os.environ.get('KTF_SAVED_WEIGHTS_DIR', '/tmp/ki_04_3.h5')}",
+                            "save_best_only": false,
+                            "save_weights_only": true,
+                            "verbose": 1
+                        }
+                    }
+                ],
+                
+                "save_dir": null
+            }
+        }
+    },
+    
+    // 4
+    {
+        "datasets": {        
+            "ktf.datasets.web.web7.from_tfrecord_graph": {
+                "tfrecord_dir": ["${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split0', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split1', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split2', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split3', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split5', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split6', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split7', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split8', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split9', '**')}"],
+                "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config.json')}",
+                "batch_size": 32,
+                "validation_split": 0.0,
+                "shuffle_size": 1200,
+                "repeat": false
+            }
+        },
+        
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 49,
+                "num_steps": null,
+                "num_valid_steps": null,
+                "pretrained_weights": [
+                    [
+                        "gcn_trans",
+                        "runs/web/commoncrawl/pretrain_2008.h5"
+                    ]
+                ],
+                
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.LearningRateScheduler": {
+                            "schedule": {
+                                "tf.keras.experimental.CosineDecayRestarts": {
+                                    "initial_learning_rate": 0.002,
+                                    "first_decay_steps": 7,
+                                    "t_mul": 2,
+                                    "alpha": 0.05
+                                }
+                            },
+                            
+                            "verbose": true
+                        }
+                        
+                    },
+
+                    {
+                        "ktf.train.callbacks.Evaluate": {
+                            "dataset": {
+                                "ktf.datasets.web.web7.from_tfrecord_graph": {
+                                    "tfrecord_dir": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split4', '**')}",
+                                    "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config_no_rand_eig.json')}",
+                                    "batch_size": 32,
+                                    "validation_split": 0.0,
+                                    "shuffle_size": null,
+                                    "repeat": false
+                                }   
+                            },
+                            "monitor": "${list(range(15, 100))}",
+                            "mode": "max"
+                        }
+                    },
+                    
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "${os.environ.get('KTF_SAVED_WEIGHTS_DIR', '/tmp/ki_04_4.h5')}",
+                            "save_best_only": false,
+                            "save_weights_only": true,
+                            "verbose": 1
+                        }
+                    }
+                ],
+                
+                "save_dir": null
+            }
+        }
+    },
+    
+    // 5
+    {
+        "datasets": {        
+            "ktf.datasets.web.web7.from_tfrecord_graph": {
+                "tfrecord_dir": ["${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split0', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split1', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split2', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split3', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split4', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split6', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split7', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split8', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split9', '**')}"],
+                "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config.json')}",
+                "batch_size": 32,
+                "validation_split": 0.0,
+                "shuffle_size": 1200,
+                "repeat": false
+            }
+        },
+        
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 49,
+                "num_steps": null,
+                "num_valid_steps": null,
+                "pretrained_weights": [
+                    [
+                        "gcn_trans",
+                        "runs/web/commoncrawl/pretrain_2008.h5"
+                    ]
+                ],
+                
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.LearningRateScheduler": {
+                            "schedule": {
+                                "tf.keras.experimental.CosineDecayRestarts": {
+                                    "initial_learning_rate": 0.002,
+                                    "first_decay_steps": 7,
+                                    "t_mul": 2,
+                                    "alpha": 0.05
+                                }
+                            },
+                            
+                            "verbose": true
+                        }
+                        
+                    },
+
+                    {
+                        "ktf.train.callbacks.Evaluate": {
+                            "dataset": {
+                                "ktf.datasets.web.web7.from_tfrecord_graph": {
+                                    "tfrecord_dir": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split5', '**')}",
+                                    "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config_no_rand_eig.json')}",
+                                    "batch_size": 32,
+                                    "validation_split": 0.0,
+                                    "shuffle_size": null,
+                                    "repeat": false
+                                }   
+                            },
+                            "monitor": "${list(range(15, 100))}",
+                            "mode": "max"
+                        }
+                    },
+                    
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "${os.environ.get('KTF_SAVED_WEIGHTS_DIR', '/tmp/ki_04_5.h5')}",
+                            "save_best_only": false,
+                            "save_weights_only": true,
+                            "verbose": 1
+                        }
+                    }
+                ],
+                
+                "save_dir": null
+            }
+        }
+    },
+    
+    // 6
+    {
+        "datasets": {        
+            "ktf.datasets.web.web7.from_tfrecord_graph": {
+                "tfrecord_dir": ["${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split0', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split1', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split2', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split3', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split4', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split5', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split7', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split8', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split9', '**')}"],
+                "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config.json')}",
+                "batch_size": 32,
+                "validation_split": 0.0,
+                "shuffle_size": 1200,
+                "repeat": false
+            }
+        },
+        
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 49,
+                "num_steps": null,
+                "num_valid_steps": null,
+                "pretrained_weights": [
+                    [
+                        "gcn_trans",
+                        "runs/web/commoncrawl/pretrain_2008.h5"
+                    ]
+                ],
+                
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.LearningRateScheduler": {
+                            "schedule": {
+                                "tf.keras.experimental.CosineDecayRestarts": {
+                                    "initial_learning_rate": 0.002,
+                                    "first_decay_steps": 7,
+                                    "t_mul": 2,
+                                    "alpha": 0.05
+                                }
+                            },
+                            
+                            "verbose": true
+                        }
+                        
+                    },
+
+                    {
+                        "ktf.train.callbacks.Evaluate": {
+                            "dataset": {
+                                "ktf.datasets.web.web7.from_tfrecord_graph": {
+                                    "tfrecord_dir": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split6', '**')}",
+                                    "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config_no_rand_eig.json')}",
+                                    "batch_size": 32,
+                                    "validation_split": 0.0,
+                                    "shuffle_size": null,
+                                    "repeat": false
+                                }   
+                            },
+                            "monitor": "${list(range(15, 100))}",
+                            "mode": "max"
+                        }
+                    },
+                    
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "${os.environ.get('KTF_SAVED_WEIGHTS_DIR', '/tmp/ki_04_6.h5')}",
+                            "save_best_only": false,
+                            "save_weights_only": true,
+                            "verbose": 1
+                        }
+                    }
+                ],
+                
+                "save_dir": null
+            }
+        }
+    },
+    
+    // 7
+    {
+        "datasets": {        
+            "ktf.datasets.web.web7.from_tfrecord_graph": {
+                "tfrecord_dir": ["${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split0', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split1', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split2', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split3', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split4', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split5', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split6', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split8', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split9', '**')}"],
+                "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config.json')}",
+                "batch_size": 32,
+                "validation_split": 0.0,
+                "shuffle_size": 1200,
+                "repeat": false
+            }
+        },
+        
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 49,
+                "num_steps": null,
+                "num_valid_steps": null,
+                "pretrained_weights": [
+                    [
+                        "gcn_trans",
+                        "runs/web/commoncrawl/pretrain_2008.h5"
+                    ]
+                ],
+                
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.LearningRateScheduler": {
+                            "schedule": {
+                                "tf.keras.experimental.CosineDecayRestarts": {
+                                    "initial_learning_rate": 0.002,
+                                    "first_decay_steps": 7,
+                                    "t_mul": 2,
+                                    "alpha": 0.05
+                                }
+                            },
+                            
+                            "verbose": true
+                        }
+                        
+                    },
+
+                    {
+                        "ktf.train.callbacks.Evaluate": {
+                            "dataset": {
+                                "ktf.datasets.web.web7.from_tfrecord_graph": {
+                                    "tfrecord_dir": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split7', '**')}",
+                                    "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config_no_rand_eig.json')}",
+                                    "batch_size": 32,
+                                    "validation_split": 0.0,
+                                    "shuffle_size": null,
+                                    "repeat": false
+                                }   
+                            },
+                            "monitor": "${list(range(15, 100))}",
+                            "mode": "max"
+                        }
+                    },
+                    
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "${os.environ.get('KTF_SAVED_WEIGHTS_DIR', '/tmp/ki_04_7.h5')}",
+                            "save_best_only": false,
+                            "save_weights_only": true,
+                            "verbose": 1
+                        }
+                    }
+                ],
+                
+                "save_dir": null
+            }
+        }
+    },
+    
+    // 8
+    {
+        "datasets": {        
+            "ktf.datasets.web.web7.from_tfrecord_graph": {
+                "tfrecord_dir": ["${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split0', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split1', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split2', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split3', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split4', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split5', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split6', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split7', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split9', '**')}"],
+                "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config.json')}",
+                "batch_size": 32,
+                "validation_split": 0.0,
+                "shuffle_size": 1200,
+                "repeat": false
+            }
+        },
+        
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 49,
+                "num_steps": null,
+                "num_valid_steps": null,
+                "pretrained_weights": [
+                    [
+                        "gcn_trans",
+                        "runs/web/commoncrawl/pretrain_2008.h5"
+                    ]
+                ],
+                
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.LearningRateScheduler": {
+                            "schedule": {
+                                "tf.keras.experimental.CosineDecayRestarts": {
+                                    "initial_learning_rate": 0.002,
+                                    "first_decay_steps": 7,
+                                    "t_mul": 2,
+                                    "alpha": 0.05
+                                }
+                            },
+                            
+                            "verbose": true
+                        }
+                        
+                    },
+
+                    {
+                        "ktf.train.callbacks.Evaluate": {
+                            "dataset": {
+                                "ktf.datasets.web.web7.from_tfrecord_graph": {
+                                    "tfrecord_dir": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split8', '**')}",
+                                    "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config_no_rand_eig.json')}",
+                                    "batch_size": 32,
+                                    "validation_split": 0.0,
+                                    "shuffle_size": null,
+                                    "repeat": false
+                                }   
+                            },
+                            "monitor": "${list(range(15, 100))}",
+                            "mode": "max"
+                        }
+                    },
+                    
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "${os.environ.get('KTF_SAVED_WEIGHTS_DIR', '/tmp/ki_04_8.h5')}",
+                            "save_best_only": false,
+                            "save_weights_only": true,
+                            "verbose": 1
+                        }
+                    }
+                ],
+                
+                "save_dir": null
+            }
+        }
+    },
+    
+    // 9
+    {
+        "datasets": {        
+            "ktf.datasets.web.web7.from_tfrecord_graph": {
+                "tfrecord_dir": ["${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split0', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split1', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split2', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split3', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split4', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split5', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split6', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split7', '**')}",
+                                 "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split8', '**')}"],
+                "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config.json')}",
+                "batch_size": 32,
+                "validation_split": 0.0,
+                "shuffle_size": 1200,
+                "repeat": false
+            }
+        },
+        
+        "train_loop": {
+            "ktf.train.KerasTrainLoop": {
+                "num_epochs": 49,
+                "num_steps": null,
+                "num_valid_steps": null,
+                "pretrained_weights": [
+                    [
+                        "gcn_trans",
+                        "runs/web/commoncrawl/pretrain_2008.h5"
+                    ]
+                ],
+                
+                "callbacks": [
+                    {
+                        "tf.keras.callbacks.LearningRateScheduler": {
+                            "schedule": {
+                                "tf.keras.experimental.CosineDecayRestarts": {
+                                    "initial_learning_rate": 0.002,
+                                    "first_decay_steps": 7,
+                                    "t_mul": 2,
+                                    "alpha": 0.05
+                                }
+                            },
+                            
+                            "verbose": true
+                        }
+                        
+                    },
+
+                    {
+                        "ktf.train.callbacks.Evaluate": {
+                            "dataset": {
+                                "ktf.datasets.web.web7.from_tfrecord_graph": {
+                                    "tfrecord_dir": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'split9', '**')}",
+                                    "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config_no_rand_eig.json')}",
+                                    "batch_size": 32,
+                                    "validation_split": 0.0,
+                                    "shuffle_size": null,
+                                    "repeat": false
+                                }   
+                            },
+                            "monitor": "${list(range(15, 100))}",
+                            "mode": "max"
+                        }
+                    },
+                    
+                    {
+                        "tf.keras.callbacks.ModelCheckpoint": {
+                            "filepath": "${os.environ.get('KTF_SAVED_WEIGHTS_DIR', '/tmp/ki_04_9.h5')}",
+                            "save_best_only": false,
+                            "save_weights_only": true,
+                            "verbose": 1
+                        }
+                    }
+                ],
+                
+                "save_dir": null
+            }
+        }
+    }
+]
+
