@@ -7,7 +7,7 @@ import sys
 
 # Hack to allow this script to either be run independently or imported as a module
 if __name__ == "__main__":
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "klassterfork", "python"))
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "klassterfork"))
 
 import ktf.datasets.web.html_to_graph
 from ktf.datasets.web.html_to_graph import FAIL, WARNING, ENDC

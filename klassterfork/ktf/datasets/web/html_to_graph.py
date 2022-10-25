@@ -131,7 +131,7 @@ def html_to_graph_tensor(file, sample_text_nodes, depth, max_num_nodes, max_neig
             sampled_node_list = list(np.random.choice(list(cur_node_set),
                                                       replace=False,
                                                       size=min(max_node_list_size, len(cur_node_set))))
-            while(len(sampled_node_list) < max_node_list_size):
+            while (len(sampled_node_list) < max_node_list_size):
                 sampled_node_list += list(np.random.choice(node_list_raw,
                                                            replace=False,
                                                            size=min(max_node_list_size - len(sampled_node_list),
@@ -375,6 +375,15 @@ def initialize_config(opt_args):
     print()
 
     os.makedirs(os.path.dirname(config_path), exist_ok=True)
+    with open(config_path, "w") as fd:
+        json.dump(config, fd, indent=4, sort_keys=True)
+
+    # Remove eigen vector feature desc if used so we can use this modified config
+    # to workaround not permuting eigenvectors during training
+    config["feature_desc"]["feature_offsets"].pop("tag_graph_eigen", None)
+
+    path_splits = config_path.split('.')
+    config_path = '.'.join(path_splits[:-1]) + "_no_rand_eig" + '.' + path_splits[-1]
     with open(config_path, "w") as fd:
         json.dump(config, fd, indent=4, sort_keys=True)
 

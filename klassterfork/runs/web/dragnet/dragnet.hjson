@@ -110,7 +110,7 @@
                             "verbose": 1
                         }
                     },
-                    
+                    /*
                     {
                         "ktf.train.callbacks.Evaluate": {
                             "dataset": {
@@ -128,7 +128,7 @@
                             "monitor": "val_f1_score",
                             "mode": "max"
                         }
-                    }
+                    }*/
                 ],
                
                 "save_dir": null

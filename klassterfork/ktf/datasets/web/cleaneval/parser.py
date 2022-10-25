@@ -80,7 +80,8 @@ class ParserHTML:
         filtered_str = []
         is_whitespace_last = True
         #last_blk_parent = None
-        for s in soup.html.next_elements:
+        doc = soup.html if soup.html else soup.contents[0]
+        for s in doc.next_elements:
             if type(s) == bs4.element.Tag:
                 if s.name == "br" or s.name in blk_elems:
                     is_whitespace_last = True
@@ -133,7 +134,8 @@ class ParserHTML:
         # Now we count the total number of tokens that each tag owns, and how many of these tokens belong in the LCS
         tag_tok_count = {}
         tag_tok_lcs_count = {}
-        for s in soup.html.find_all_next(string=True):
+        doc = soup.html if soup.html else soup.contents[0]
+        for s in doc.find_all_next(string=True):
             if type(s) == bs4.element.NavigableString:
                 if len(str(s).split()) > 0:
                     if s.parent.tag_id not in tag_tok_count:

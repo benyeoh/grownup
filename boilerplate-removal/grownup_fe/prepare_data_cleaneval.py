@@ -13,7 +13,7 @@ import gzip
 
 # Hack to allow this script to either be run independently or imported as a module
 if __name__ == "__main__":
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "klassterfork", "python"))
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "klassterfork"))
 
 import numpy as np
 import bs4
@@ -85,10 +85,9 @@ def write_graph_pkl_text(args):
         ktf.datasets.web.html_to_graph.tag_features_model.set_tag_features(soup,
                                                                            recover_failures=feat_recover_failures)
         graph = ktf.datasets.web.to_graph(soup)
-
         # Fetch content nodes vs non-content nodes for later sanity checks
-        parser_dummy = ktf.datasets.web.cleaneval.ParserHTML(None, None, None)
-
+        parser_dummy = ktf.datasets.web.cleaneval.ParserHTML(
+            orig_path=None, cleaned_path=None, inline_css=False, tag_features_model=None)
         gold_std = _read_file(cleaned_file)
         gold_std_toks = parser_dummy._gold_std_to_list(gold_std)
         toks, tok_tags = parser_dummy._soup_txt_to_list(soup)

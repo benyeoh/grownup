@@ -116,7 +116,7 @@
                         }
                     },
                     
-                    {
+                   /* {
                         "ktf.train.callbacks.Evaluate": {
                             "dataset": {
                                 "ktf.datasets.web.cleaneval.from_tfrecord": {
@@ -131,7 +131,7 @@
                             "monitor": "val_f1_score",
                             "mode": "max"
                         }
-                    }
+                    }*/
                 ],
                 "save_dir": null
                 

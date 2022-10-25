@@ -40,10 +40,9 @@ def to_soup_from_file(html_path, inline_css, filter_tags=["script", "noscript", 
                 html_doc = doc.decode("iso-8859-1")
         soup = to_soup(html_doc, inline_css, filter_tags)
 
-    try:
+    if prop_filepath:
         return (soup, _to_elem_props_from_file(prop_filepath)) if os.path.isfile(prop_filepath) else (soup, None)
-    except TypeError as e:
-        print(e)
+    else:
         return soup
 
 

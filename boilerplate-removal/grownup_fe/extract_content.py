@@ -5,7 +5,7 @@ import glob
 import gzip
 import pickle
 import sys
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "klassterfork", "python"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "klassterfork"))
 
 import numpy as np
 import tensorflow as tf
@@ -39,7 +39,7 @@ def extract_content(input_files,
     num_tp = 0
     num_fp = 0
     num_fn = 0
-    
+
     total_node_tp = 0
     total_node_fp = 0
     total_node_fn = 0
@@ -126,7 +126,6 @@ def extract_content(input_files,
             total_node_tp += node_tp
             total_node_fp += node_fp
             total_node_fn += node_fn
-            
 
         if all_strings is not None:
             print("%d: Dumping cleaned output %s ..." % (i, output_file))
@@ -143,8 +142,8 @@ def extract_content(input_files,
         print("Total -- Prec: %f, Recall: %f, F1: %f" % (prec, recall, f1))
 
     if node_gt is not None:
-            prec, recall, f1 = compute_precision_recall_f1(total_node_tp, total_node_fp, total_node_fn)
-            print("Total Node GT %d: Prec: %f, Recall: %f, F1: %f" % (i, prec, recall, f1))
+        prec, recall, f1 = compute_precision_recall_f1(total_node_tp, total_node_fp, total_node_fn)
+        print("Total Node GT %d: Prec: %f, Recall: %f, F1: %f" % (i, prec, recall, f1))
 
 
 def _debug_extract_content_tfrecord(tfrecord_dir,
@@ -202,26 +201,26 @@ def _debug_extract_content_tfrecord(tfrecord_dir,
                     node_fp += 1.0 - tf.cast(label[batch][idx], tf.float32)
                 else:
                     node_fn += tf.cast(label[batch][idx], tf.float32)
-        
+
         prec, recall, f1 = compute_precision_recall_f1(node_tp, node_fp, node_fn)
         print("Node GT %d: Prec: %f, Recall: %f, F1: %f" % (i, prec, recall, f1))
-        
+
         num_tp += node_tp
         num_fp += node_fp
         num_fn += node_fn
-        
+
     prec, recall, f1 = compute_precision_recall_f1(num_tp, num_fp, num_fn)
     print("Total -- Prec: %f, Recall: %f, F1: %f" % (prec, recall, f1))
-   
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', dest='input_dir', help='Directory of input files', metavar='DIR')
     parser.add_argument('-o', dest='output_dir', help='Directory of extracted files', metavar='DIR', default=None)
     parser.add_argument('--model-config-path', dest='model_config_path',
-                          help='Path to json config for model', metavar='PATH')
+                        help='Path to json config for model', metavar='PATH')
     parser.add_argument('--model-weights-path', dest='model_weights_path',
-                          help='Path to weights for model', metavar='PATH')
+                        help='Path to weights for model', metavar='PATH')
     args = parser.parse_args()
 
     if not args.output_dir:
@@ -237,9 +236,9 @@ if __name__ == "__main__":
             out_filename = os.path.basename(path).split(".")[0] + ".txt"
             outpath = os.path.join(args.output_dir, out_filename)
             all_output_files.append(outpath)
-    
+
         os.makedirs(args.output_dir, exist_ok=True)
-    
+
         extract_content(all_input_files,
                         all_output_files,
                         args.model_config_path,

@@ -9,6 +9,6 @@ pushd klassterfork/docker
 ./build_docker.sh
 popd
 
-echo "Building docker image for grownup_boil_remove..."
-sudo docker build --network=host -t grownup_boil_remove .
+echo "Building docker image for grownup_genre_class ..."
+sudo docker build --network=host -t grownup_genre_class .
 

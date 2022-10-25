@@ -15,7 +15,7 @@ if __name__ == "__main__":
 import ktf.datasets
 import ktf.datasets.web
 from ktf.datasets.web.html_to_graph import FAIL, WARNING, INFO, ENDC
-from ktf.datasets.web.webgenre7 import FEATURE_DESC_GRAPH
+from ktf.datasets.web.web7 import FEATURE_DESC_GRAPH
 
 tag_feats_model = None
 
@@ -62,7 +62,7 @@ def get_input_files(opt_args):
     return input_files
 
 
-def html_to_graph_tensor(file, depth, max_num_nodes, max_neighbours):
+def html_to_graph_tensor(file, depth, max_num_nodes, max_neighbours, inline_css):
     """Modified from ktf.datasets.web.html_to_graph.html_to_graph_tensor with simplified logic to convert from a HTML
     DOM to a graph tensor.
 
@@ -78,7 +78,7 @@ def html_to_graph_tensor(file, depth, max_num_nodes, max_neighbours):
             features: A numpy tensor of shape (max_num_nodes, feature_size)
     """
     try:
-        soup = ktf.datasets.web.to_soup_from_file(file)
+        soup = ktf.datasets.web.to_soup_from_file(file, inline_css=inline_css)
         tag_feats_model.set_tag_features(soup, recover_failures=False)
         graph = ktf.datasets.web.to_graph(soup)
 
@@ -90,7 +90,7 @@ def html_to_graph_tensor(file, depth, max_num_nodes, max_neighbours):
             sampled_node_list = list(np.random.choice(list(cur_node_set),
                                                       replace=False,
                                                       size=min(max_node_list_size, len(cur_node_set))))
-            while(len(sampled_node_list) < max_node_list_size):
+            while (len(sampled_node_list) < max_node_list_size):
                 sampled_node_list += list(np.random.choice(node_list_raw,
                                                            replace=False,
                                                            size=min(max_node_list_size - len(sampled_node_list),
@@ -138,7 +138,7 @@ def html_to_graph_tensor(file, depth, max_num_nodes, max_neighbours):
 def write_html_to_tfrecord(args):
     global tag_feats_mode
 
-    id, all_inputs, out_dir, depth, max_num_nodes, max_neighbours = args
+    id, all_inputs, out_dir, inline_css, depth, max_num_nodes, max_neighbours = args
 
     errors = []
     for class_idx, cls, pages in all_inputs:
@@ -153,7 +153,8 @@ def write_html_to_tfrecord(args):
                 for j, (adj, feats) in enumerate(html_to_graph_tensor(html_path,
                                                                       depth,
                                                                       max_num_nodes,
-                                                                      max_neighbours)):
+                                                                      max_neighbours,
+                                                                      inline_css)):
                     record_writers[i].write((adj.flatten().tolist(), feats.flatten().tolist(), class_idx))
                     # Note, currently allow convert 5 subgraphs for each webpage, corresponding to 1750 x 5 = 8750 nodes.
                     # This is derived from an estimation of extreme large webpage
@@ -199,12 +200,14 @@ def process_all(opt_args, tag_features_model, graph_params):
         for i in range(opt_args.num_proc - 1):
             to_process.append(tuple([i,
                                      all_orig[num_webpages_so_far:num_webpages_so_far + num_webpages_per_task],
-                                     opt_args.out_dir] + graph_params))
+                                     opt_args.out_dir,
+                                     opt_args.inline_css] + graph_params))
             num_webpages_so_far += num_webpages_per_task
 
         to_process.append(tuple([opt_args.num_proc - 1,
                                  all_orig[num_webpages_so_far:],
-                                 opt_args.out_dir] + graph_params))
+                                 opt_args.out_dir,
+                                 opt_args.inline_css] + graph_params))
 
         with multiprocessing.Pool(opt_args.num_proc, initializer=_worker_init, initargs=(tag_features_args,)) as p:
             res = p.map(write_html_to_tfrecord, to_process)
@@ -213,7 +216,8 @@ def process_all(opt_args, tag_features_model, graph_params):
     else:
         write_html_to_tfrecord(tuple([0,
                                       all_orig,
-                                      opt_args.out_dir] + graph_params))
+                                      opt_args.out_dir,
+                                      opt_args.inline_css] + graph_params))
 
 
 if __name__ == "__main__":
