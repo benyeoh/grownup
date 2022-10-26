@@ -1,15 +1,21 @@
 # Dragnet benchmarking
 
 ## How to install
-Build a docker by running `./build_docker.sh`
+The easiest way to make sure you have all pre-requisites is to build a Docker image with the following command:
+
+```bash
+./build_docker.sh
+```
+
+Note: Your Docker version should be >= 19.04.
 
 ## How to run
 
-### Running bash in the docker container
-To run the environment, you can use `./run_bash.sh` with optional docker parameters. Example:
+### Run a bash shell within a container
+Once you've built the `dragnet` Docker image, run a bash shell using the image. Example:
 
-```
-./run_bash.sh -v /hpc-datasets:/hpc-datasets -v $(pwd):/pwd
+```bash
+docker run -it --net=host --rm --gpus all [-v <SRC MOUNT>:<DST MOUNT>] dragnet /bin/bash
 ```
 
 ### Prepare datasets

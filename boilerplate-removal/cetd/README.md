@@ -9,21 +9,16 @@ Run `./build_docker.sh`
 
 ## How to run
 
-### Running docker image
+### Run a bash shell within a container
+Once you've built the `cetd` Docker image, run a bash shell using the image. Example:
 
-Run `./run_bash.sh -v /hpc-datasets:/hpc-datasets [<other optional docker run args>]`
+```bash
+docker run -it --net=host --rm --gpus all [-v <SRC MOUNT>:<DST MOUNT>] cetd /bin/bash
+```
 
 ### Extract content
 Since no training is required, you can just proceed to extract content given the HTML files and ground truth files. The ground truth files are simply pre-processed to remove some unnecessary markups and written out again.
 
-Dragnet: 
-
 ```bash
-./extract_content.py -i /hpc-datasets/web/dragnet/raw/test_html/ -c /hpc-datasets/web/dragnet/raw/test_cleaned/ -o <output folder>
-```
-
-Cleaneval:
-
-```bash
-./extract_content.py -i /hpc-datasets/web/cleaneval/raw/test/input -c /hpc-datasets/web/cleaneval/raw/test/gold_std -o <output folder>
+./extract_content.py -i <INPUT_HTML_DIR> -c <INPUT_LABEL_DIR> -o <EXTRACTED_DIR>
 ```
