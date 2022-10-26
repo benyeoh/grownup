@@ -1,4 +1,4 @@
-# GROWN+UP: A "Graph Representation Of a Webpage" Network + Utilizing Pre-Training
+# GROWN+UP: A "Graph Representation Of a Webpage" Network Utilizing Pre-Training
 This is the official repo of GROWN+UP and accompanying benchmarks published in the [CIKM'22 proceedings](https://dl.acm.org/doi/10.1145/3511808.3557340). Latest preprint can be found on [arxiv](https://arxiv.org/abs/2208.02252).
 
 ## Pre-requisites

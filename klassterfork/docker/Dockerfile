@@ -71,9 +71,6 @@ COPY ./requirements.txt $HOME/klassterfork/
 
 RUN pip install -r $HOME/klassterfork/requirements.txt
 
-COPY ./requirements_ext.txt $HOME/klassterfork/
-RUN pip install -r $HOME/klassterfork/requirements_ext.txt
-
 # Finally copy entire repo
 # Separate into sections so that we can cache the large stuff earlier for faster building and pushing of image
 #COPY ./python/tests/data $HOME/klassterfork/python/tests/data
