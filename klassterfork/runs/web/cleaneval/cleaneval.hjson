@@ -1,24 +1,32 @@
 [
     {
         "datasets": {        
+            # Read from CleanEval tfrecord dataset
             "ktf.datasets.web.cleaneval.from_tfrecord": {
-                "tfrecord_dir": "${os.environ['KTF_TRAIN_DIR']}", //"/hpc-datasets/web/cleaneval/tfrecord/train_1703_w_pkl",
+                "tfrecord_dir": "${os.environ['KTF_TRAIN_DIR']}", # Defined by KTF_TRAIN_DIR environment var in this case
                 "expand_binary_class": false,
                 "validation_split": 0.1,
                 "batch_size": 128,
                 "shuffle_size": 4000,
-                "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config.json')}" //"/hpc-datasets/web/cleaneval/tfrecord/train_1703_w_pkl/config.json",
+                "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config.json')}"
             }
+
+            # Output here tfrecord dataset is a tuple that looks like: ([adjacency, node features, idx of node to classify], label)
         },
         "model": {
+            # Start with a wrapper Sequential model
             "ktf.models.Sequential": {
                 "name": "base_model",
                 "layers": [
-                     {
+                    # Then define the layers 
+                    {
+                       # Which contains another Sequential
+                       # defining the actual GROWN+UP layers ...
                        "ktf.models.Sequential": {
                             "name": "gcn_trans",
                             "layers": [
                                 {
+                                    # ... comprised of a GCN with recurrent layers
                                     "ktf.models.networks.RecurrentCGN": {
                                         "name": "gcn",
                                         "layers": [
@@ -41,7 +49,11 @@
                                         "dropout": 0.2
                                     }
                                 },
+
+                                 # Note that the output of the previous layer is a list of tensors: [adjacency, node features, idx of node to classify]
+
                                 {
+                                    # ... and a Transformer network
                                     "ktf.models.networks.TransGraphNet": {
                                         "name": "transgraph",
                                         "num_layers": 5,
@@ -50,11 +62,15 @@
                                         "dropout": 0.0
                                     }
                                 }
+
+                                # The final output here is a list of tensors: [adjacency, node features, idx of node to classify, cls feature vector (unused)]
                             ]
                          }
-                     },
+                    },
 
                     {
+                        # Since we want to do classification, we append this graph classification layer that takes
+                        # the [adj, feats, node idx] input and outputs the classification of the node specified by "node idx"
                         "ktf.models.components.GraphNodeBinaryClassifyHead": {
                             "expand_class": false
                         }
@@ -64,6 +80,7 @@
             }
         },
         "loss": {
+            # Define a binary CE loss with label smoothing and some re-weighting
             "ktf.models.losses.BinaryCrossentropyW": {
                 "from_logits": false,
                 "label_smoothing": 0.01,
@@ -71,6 +88,7 @@
             }
         },
         "metrics": [
+            # Define some training metrics which should be self-explanatory
             {
                 "tf.keras.metrics.BinaryAccuracy": {}
             },
@@ -86,28 +104,32 @@
 
         ],
         "optimizer": {
+            # Adam optimizer
             "tfa.optimizers.AdamW": {
                 "learning_rate": 0.0006,
                 "weight_decay": 0.0000,
             }
         },
+
         "train_loop": {
+            # Use a pre-defined Keras train loop wrapper for training
             "ktf.train.KerasTrainLoop": {
                 "num_epochs": 30,
                 "num_steps": null,
-                "valid_freq": "${list(range(8, 40, 1))}",
-                "pretrained_weights": [
+                "valid_freq": "${list(range(8, 40, 1))}", # Do validation at a frequency starting from the 8th epoch every cycle
+                "pretrained_weights": [ 
                     [
-                        "gcn_trans",
-                        "runs/web/commoncrawl/pretrain_2008.h5"
+                        # Load pre-trained weights
+                        "gcn_trans",                                # Find the layer named "gcn_trans" ...
+                        "runs/web/commoncrawl/pretrain_2008.h5"     # ... and load the weights found in that relative path
                     ]
                     
                 ],
                 "callbacks": [
+                    # If the validation score is higher than before, save the model weights in "filepath"
                     {
                         "tf.keras.callbacks.ModelCheckpoint": {
                             "filepath": "${os.environ.get('KTF_SAVED_WEIGHTS', '/tmp/cleaneval.h5')}",
-                            //"filepath": "/temp-data/cleaneval_trans_400_val_r2.h5",
                             "monitor": "val_f1_score",
                             "save_best_only": true,
                             "save_weights_only": true,
@@ -115,27 +137,10 @@
                             "verbose": 1
                         }
                     },
-                    
-                   /* {
-                        "ktf.train.callbacks.Evaluate": {
-                            "dataset": {
-                                "ktf.datasets.web.cleaneval.from_tfrecord": {
-                                    "tfrecord_dir": "${os.environ['KTF_TEST_DIR']}", // "/hpc-datasets/web/cleaneval/tfrecord/test_1703",
-                                    "expand_binary_class": false,
-                                    "validation_split": 0.0,
-                                    "batch_size": 128,
-                                    "shuffle_size": null,
-                                    "config_path": "${os.path.join(os.environ['KTF_TEST_DIR'], 'config_no_rand_eig.json')}", //"/hpc-datasets/web/cleaneval/tfrecord/test_1703/config_no_rand_eig.json"
-                                }
-                            },
-                            "monitor": "val_f1_score",
-                            "mode": "max"
-                        }
-                    }*/
                 ],
+
+                # Disable default saving of model after training
                 "save_dir": null
-                
-                
             }
         }
     }

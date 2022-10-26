@@ -2,12 +2,12 @@
     {
         "datasets": {        
             "ktf.datasets.web.dragnet.from_tfrecord": {
-                "tfrecord_dir": "${os.environ['KTF_TRAIN_DIR']}", //"/hpc-datasets/web/dragnet/tfrecord/train_1703",
+                "tfrecord_dir": "${os.environ['KTF_TRAIN_DIR']}",
                 "expand_binary_class": false,
                 "validation_split": 0.1,
                 "batch_size": 128,
                 "shuffle_size": 3000,
-                "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config.json')}" //"/hpc-datasets/web/dragnet/tfrecord/train_1703/config.json"
+                "config_path": "${os.path.join(os.environ['KTF_TRAIN_DIR'], 'config.json')}"
              }                    
         },
         "model": {
@@ -102,7 +102,6 @@
                     {
                         "tf.keras.callbacks.ModelCheckpoint": {
                             "filepath": "${os.environ.get('KTF_SAVED_WEIGHTS', '/tmp/dragnet.h5')}",
-                            //"filepath": "/temp-data/dragnet_trans_val_no_simi.h5",
                             "monitor": "val_f1_score",
                             "save_best_only": true,
                             "save_weights_only": true,
