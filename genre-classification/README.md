@@ -1,4 +1,4 @@
-# GROWN+UP feat. extractor genre classification benchmark
+# GROWN+UP Genre Classification Benchmark
 
 ## Pre-requisites
 ### Building Docker image
