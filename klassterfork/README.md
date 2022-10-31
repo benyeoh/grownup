@@ -6,7 +6,7 @@ The hardware / software requirements for ktf are:
 
 * Ubuntu 18.04 or newer
 * Tensorflow 2.5
-* NVIDIA GPU with CUDA 11.2.1 support (GPU driver version: >=460.32.03)
+* NVIDIA GPU with CUDA 11.2.1 runtime libraries (GPU driver version: >=460.32.03)
 Typically, you don't need to care on Cuda library installation if you use Docker
 * Python 3.7 or newer
 * [Git LFS](https://git-lfs.github.com/)
@@ -26,7 +26,6 @@ Typically, you don't need to care on Cuda library installation if you use Docker
         ```sh
         sudo apt-get install cuda-11-2
         ```
-    * If it complains of missing dependencies of `cuda-drivers`, you might have to manually install the right version of `cuda-drivers` that corresponds to your GPU driver version first. For example, `sudo apt-get install cuda-drivers=470.141.03-1`. Then try installing `cuda-11-2` again.
     * You might also need to install CuDNN v8.1:
         ```sh
         # Install development and runtime libraries (~4GB)
@@ -39,16 +38,9 @@ Typically, you don't need to care on Cuda library installation if you use Docker
         sudo ldconfig
         ```        
 2. Install Python (>=3.7) (recommended to use a PPA as detailed here: https://websiteforstudents.com/installing-the-latest-python-3-7-on-ubuntu-16-04-18-04/)
-3. Install Python (>=3.7) developer libraries: `sudo apt-get install python3.7-dev` 
-4. (Optional) Recommended that you create a `virtualenv` for ktf and related projects:
-    * Run `pip3 install virtualenv`
-    * Run `which python3.7` to get the path to your python3.7 interpreter
-    * Run `virtualenv -p <python3.7_path> <venv_path_to_create>` to create a venv for python3.7
-    * Run `source <venv_path>/bin/activate` to activate your venv (and `deactivate` to deactivate it later)
-5. At this point, you should be in your virtualenv that you just created. See step 4.
-6. In the `<ktf_project_root>/python` folder, run `pip install -r requirements.txt` to install required packages
-7. In the `<ktf_project_root>/python` folder, run `pip install -r requirements_ext.txt` to install required packages
-8. Test that everything is installed correctly with `python -c "import tensorflow as tf;tf.test.is_gpu_available()"`
+3. Install developer libraries: `sudo apt-get install python3.7-dev libmagic1` 
+4. In the `<ktf_project_root>/python` folder, run `pip install -r requirements.txt` to install required packages
+5. Test that everything is installed correctly with `python -c "import tensorflow as tf;tf.test.is_gpu_available()"`
     * You should see an output similar to:
       ```
       Created TensorFlow device (/device:GPU:0 with 5033 MB memory) -> physical GPU (device: 0, name: GeForce RTX 2060, pci bus id: 0000:01:00.0, compute capability: 7.5)
@@ -56,10 +48,7 @@ Typically, you don't need to care on Cuda library installation if you use Docker
 
 ktf currently uses **Tensorflow 2.5.0**.
 
-For development within the project itself, including running functional tests and notebooks and other ktf package scripts, it is not necessary to install the ktf package.
-All scripts and notebooks defined within the `klassterfork/python` subdirectory should be able to run as-is.
-
-For external development using the ktf package, you must first install the package with `pip install --force-reinstall .`.
+For external development using the ktf package, you must either install the package with `pip install --force-reinstall .`, or make sure that `klassterfork` is in your `PYTHON_PATH`.
 
 ## 3. Architecture
 The architecture of ktf encourages breaking up an implementation into reusable "components" rather than a single monolithic feature.
