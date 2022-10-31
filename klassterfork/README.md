@@ -5,12 +5,14 @@ This repo contains utilities and scripts to facilitate development and prototypi
 The hardware / software requirements for ktf are:
 
 * Ubuntu 18.04 or newer
-* Tensorflow 2.5
-* NVIDIA GPU with CUDA 11.2.1 runtime libraries (GPU driver version: >=460.32.03)
-Typically, you don't need to care on Cuda library installation if you use Docker
+* Docker 19.03 or newer with GPU support
+  * (Optional but recommended)
 * Python 3.7 or newer
+* Tensorflow 2.5
+* NVIDIA GPU with CUDA 11.2.1 support (GPU driver version: >=460.32.03)
+  * Typically, you don't need to care on Cuda library installation if you use Docker
 * [Git LFS](https://git-lfs.github.com/)
-**This is super important and is required when you clone / pull from this repo, since some large data (ie, pretrained weights) is stored in LFS.**
+  * This is **super important and is required** when you clone / pull from this repo, since some large data (ie, pretrained weights) is stored in LFS.
 
 ## 2. How to install (assuming you don't want to use a Docker image)
 1. Ensure that you have the required GPU drivers and libraries installed:
